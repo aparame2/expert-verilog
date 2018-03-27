@@ -1,0 +1,81 @@
+//
+
+//;
+//;
+//;# Import Libs
+//; use POSIX ();
+//; use strict ;
+//; use warnings FATAL=>qw(all) ;
+//; use diagnostics ;
+//;
+//; my $durName   = parameter( Name=>'DurationName', Val=>"None" , Doc=>"Name of duration count, name eq None will suppress report" );
+//; my $rateName  = parameter( Name=>'RateName'    , Val=>"None" , Doc=>"Name of flow rate for events (cnt/duration), name eq None will suppress report" );
+//; my $cyclName  = parameter( Name=>'CycleName'   , Val=>"None" , Doc=>"Name of inverse flow rate for events (duration/cnt), name eq None will suppress report" );
+//; my $cntName   = parameter( Name=>'CountName'   , Val=>"None" , Doc=>"Name for the count of events, name eq None will suppress report " );
+//;
+//;
+
+//saif_extract
+module `mname` (
+		input logic triggerStart ,
+		input logic triggerStop ,
+		input logic increment ,  
+		input logic clk ,
+		input logic rst 
+		);
+
+   logic signed [63:0] count ;
+   logic signed [63:0] duration ;
+    
+   logic 	       started , stopped ;
+   
+   // Are we started 
+   always_ff @( posedge clk ) begin
+      started <= rst ? started || triggerStart : 1'b0 ;
+   end
+
+   // Are we stopped
+   always_ff @( posedge clk ) begin
+      stopped <= rst ? stopped || triggerStop : 1'b0 ;
+   end
+
+   // Help debug issues with triggerStop appearing before we have started 
+   assert property( @(posedge clk) !triggerStop || ( triggerStop && started )  );
+
+   // Two Counters
+   always @( posedge clk ) begin
+      // Count the increments
+      case ( 1'b1 )
+	( !rst ):                             count <= 64'd0 ;
+	( started && increment && !stopped ): count <= count + 1 ;
+	default:                              count <= count ;
+      endcase
+      // Count the duration
+      case ( 1'b1 )
+	( !rst ):                duration <= 64'd0 ;
+	( started && !stopped ): duration <= duration + 1 ;
+	default:                 duration <= duration ;
+      endcase      
+   end
+
+   // Report Results
+   always @( posedge stopped ) begin
+	 //; unless( $durName eq "None" ){ 
+	 $display( "!`$durName`!:%0d" , duration );
+	 //; }
+	 //; unless( $rateName eq "None" ){
+	 $display( "!`$rateName`!:%f" , real'(count) / real'(duration) );
+	 //;}
+         //; unless( $cyclName eq "None" ){
+         $display( "!`$cyclName`!:%f" , real'(duration) / real'(count) );
+         //;}
+         //; unless( $cntName eq "None" ){
+         $display( "!`$cntName`!:%0d" , count );	 
+         //; }
+   end
+
+   
+   
+
+
+endmodule

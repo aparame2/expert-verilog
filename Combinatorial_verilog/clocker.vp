@@ -1,0 +1,35 @@
+//clocker module
+
+
+
+
+
+//clocker//
+module `mname` (
+		output logic  clk,
+		output int clk_period 
+		);
+
+   real clk_period_ns ;
+   int clk_half_period ;
+
+   initial begin
+     if ( $test$plusargs("clk_period") ) 
+       begin
+	  $value$plusargs("clk_period=%f", clk_period_ns);
+	  clk_period = $rtoi(clk_period_ns*1000.0) ;
+	  clk_half_period = clk_period / 2 ;
+	  $display( "Using Clk Period= %f nS", clk_period_ns) ;
+	  $display( "Using Clk Period= %d pS", clk_period) ;
+       end else begin
+           $display( "ERROR: No Clock Period Set, Try again") ;
+	   $finish(2);
+       end
+     while(1) begin
+	 #clk_half_period clk = 1'b0 ;
+	 #clk_half_period clk = 1'b1 ;
+      end
+   end // initial begin
+
+   
+endmodule // clocker

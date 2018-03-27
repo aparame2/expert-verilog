@@ -1,0 +1,313 @@
+///////////////
+//combCore.vp
+//
+//; use strict;
+//; use warnings FATAL => qw(all);
+//; use diagnostics;
+
+//; my $bW = parameter( name=>"bitWidth", val=>32, doc=>"Width of input");
+
+module ALU (
+  input logic flag,
+  input logic [`($bW/8)+1`:0] op,
+  input logic [`($bW/8)+1`:0] fn,
+  input logic [(`$bW-1`):0] src0,
+  input logic [(`$bW-1`):0] src1,
+  input logic [(`$bW-1`):0] pc,
+  input logic [(`$bW/8`):0] shift,
+  input logic [`($bW/2)-1`:0] imm,
+  input logic [`($bW/2)+9`:0] addr,
+  input logic [(`$bW-1`):0] memRdData,
+  output logic [(`$bW-1`):0] memRdAddr,
+  output logic [(`$bW-1`):0] memWrData,
+  output logic [(`$bW-1`):0] memWrAddr,
+  output logic [(`$bW-1`):0] dst0,
+  output logic [(`$bW-1`):0] pcNxt,
+  output logic memRdEn,
+  output logic memWrEn
+ );
+
+
+always_comb
+begin
+  if ( flag == 1'b1 )
+    begin
+      case (fn)
+        6'b001000: begin // jr
+               	 	pcNxt = {16'b0,src0};
+                   end
+        6'b100000: begin // add
+               		dst0 = src0 + src1;
+                        pcNxt = pc + 32'd4;
+                   end
+        6'b100010: begin // sub
+               		dst0 = src0 - src1;
+                        pcNxt = pc + 32'd4;
+                   end
+        6'b100100: begin // and
+               		dst0 = src0 & src1;
+                        pcNxt = pc + 32'd4;
+                   end
+        6'b100101: begin // or
+               		dst0 = src0 | src1;
+                        pcNxt = pc + 32'd4;
+                   end
+        6'b100110: begin // xor
+               		dst0 = src0 ^ src1;
+                        pcNxt = pc + 32'd4;
+                   end
+        6'b100111: begin // xnor
+               		dst0 = ~(src0 | src1);
+                        pcNxt = pc + 32'd4;
+                   end
+        6'b101010: begin // slt
+               		dst0 = (src0 < src1)? 1 : 0;
+                        pcNxt = pc + 32'd4;
+                   end
+        6'b000011: begin // sra
+               		dst0 = src1 >> shift;
+                        pcNxt = pc + 32'd4;
+                   end
+        default :  begin
+                 	dst0 = 32'b0;
+                 	pcNxt = pc;
+                   end
+      endcase
+    end
+  else
+    begin
+      case (op)
+             6'b000100: begin // beq
+               		   if ( src0 == src1)
+                           begin
+           		   pcNxt = (pc)+(32'd4)+{16'b0,imm};
+                           //sel0 = 1;
+                           end
+                           else
+                           begin 
+                           pcNxt = pc + 32'd4;
+                           //sel0 = 0;
+                           end
+                        end
+             6'b000101: begin // bne
+               		  if ( src0 != src1)
+                          begin           
+                 	  pcNxt = (pc)+(32'd4)+{{14{imm[15]}},imm,2'b0};
+                          //sel0 = 1;
+                          end
+                          else 
+                          begin
+                          pcNxt = pc + 32'd4;
+                          //sel0 = 0;
+                          end
+                          end
+             6'b000111: begin // bgtz
+               		    if ( src0 > 0 )
+                           begin
+                  	   pcNxt = (pc)+(32'd4)+{{14{imm[15]}},imm,2'b0};                          
+                           //sel0 = 1;
+                           end
+                           else 
+                           begin
+                           pcNxt = pc + 32'd4;
+                           //sel0 = 0;
+                           end
+                        end
+             6'b001000: begin // addi
+               		  dst0 = src0 + {{16{imm[15]}},imm};
+                          pcNxt = pc + 32'd4;
+                        end
+             6'b001010: begin // slti
+               		  dst0 = (src0 < {{16{imm[15]}},imm}) ? 1 : 0;
+                          pcNxt = pc + 32'd4;
+                        end
+             6'b001100: begin // andi
+               		  dst0 = src0 & {{16{0}},imm};
+                          pcNxt = pc + 32'd4;
+                        end
+             6'b001101: begin // ori
+               		  dst0 = src0 | {{16{0}},imm};
+                          pcNxt = pc + 32'd4;
+                        end
+             6'b001110: begin // xori
+               		  dst0 = src0 ^ {{16{0}},imm};
+                          pcNxt = pc + 32'd4;
+                        end
+             6'b100011: begin // lw
+               		  memRdEn = 1;
+           		  memRdAddr =  {{27{1'b0}},src0} + {{16{imm[15]}},imm};
+               	  	  dst0 = memRdData;
+                          pcNxt = pc + 32'd4;
+                    	end
+             6'b101011: begin // sw
+               		  memWrEn = 1;
+               	  	  memWrData = dst0;
+            		  memWrAddr =  {{27{1'b0}},src0} + {{16{imm[15]}},imm};
+                          pcNxt = pc + 32'd4;
+                    	end
+             6'b000010: begin // jump
+                       	  pcNxt = { 6'b0, addr} ;
+                      	end
+              default : begin
+                          dst0 = 32'b0;
+                          pcNxt = pc;
+                        end
+     endcase
+   end
+end
+endmodule
+
+module decoder
+(
+  input logic [`$bW-1`:0] instr,
+//  output logic [`$bW/8`:0] s0,
+//  output logic [`$bW/8`:0] s1,
+  output logic [`$bW/8`:0]shift,
+  output logic [`($bW/8)+1`:0] op,
+  output logic [`($bW/8)+1`:0] fn,
+  output logic [`($bW/2)+9`:0] addr,
+  output logic [`($bW/2)-1`:0] imm,
+//  output logic [`$bW/8`:0] d,
+  output logic flag
+);
+
+always_comb
+        begin
+          casex(instr)
+
+    {6'b000000,{26'bx}} : begin // R format
+                            flag = 1;
+                            op = instr[31:26];
+                           // s0 = instr[25:21];
+                           // s1 = instr[20:16];
+                           // d = instr [15:11];
+                            shift = instr[10:6];
+                            fn = instr[5:0];
+                            imm = 16'b0;
+                            addr = 26'b0;
+                          end
+
+    {6'b000010,{26'bx}} : begin // J format
+                            flag = 0;
+                            op = instr[31:26];
+                            addr = instr[25:0];
+                            // s0 = 0;
+                            // s1 =0;
+                            // d = 0;
+                            shift = 0;
+                            fn = 0;
+                            imm = 16'b0;
+                            //$display("in J format %d", addr);
+                          end
+
+       {6'b001,{29'bx}} : begin // I format
+                            flag = 0;
+                            op = instr[31:26];
+                            //s0 = instr[25:21];
+                            //d = instr[20:16];
+                            imm = instr[15:0];
+                            //s1 =0;
+                            shift = 0;
+                            fn = 0;
+                            addr = 26'b0;
+                          end
+
+    {6'b000100,{26'bx}} : begin // I format beq
+                            flag = 0;
+                            op = instr[31:26];
+                            //s0 = instr[25:21];
+                            //d = instr[20:16];
+                            imm = instr[15:0];
+                            //s1 =0;
+                            shift = 0;
+                            fn = 0;
+                            addr = 26'b0;
+                          end
+
+    {6'b000101,{26'bx}} : begin // I format bne
+                            flag = 0;
+                            op = instr[31:26];
+                            //s0 = instr[25:21];
+                            //d = instr[20:16];
+                            imm = instr[15:0];
+                            // s1 =0;
+                            shift = 0;
+                            fn = 0;
+                            addr = 26'b0;
+                          end
+
+    {6'b000111,{26'bx}} : begin // I format bgtz
+                            flag = 0;
+                            op = instr[31:26];
+                            //s0 = instr[25:21];
+                            //d = instr[20:16];
+                            imm = instr[15:0];
+                            //s1 =0;
+                            shift = 0;
+                            fn = 0;
+                            addr = 26'b0;
+                          end
+    {6'b100011,{26'bx}} : begin // I format lw
+                            flag = 0;
+                            op = instr[31:26];
+                            // s0 = instr[25:21];
+                            // d = instr[20:16];
+                            imm = instr[15:0];
+                            // s1 =0;
+                            shift = 0;
+                            fn = 0;
+                            addr = 26'b0;
+                          end
+    {6'b101011,{26'bx}} : begin // I format sw
+                            flag = 0;
+                            op = instr[31:26];
+                            // s0 = instr[25:21];
+                            // d = instr[20:16];
+                            imm = instr[15:0];
+                            // s1 =0;
+                            shift = 0;
+                            fn = 0;
+                            addr = 26'b0;
+                          end
+                default : begin
+                            flag = 0;
+                            op = 6'b0;
+                            // s0 = 5'b0;
+                            // s1 = 5'b0;
+                            // d = 5'b0 ;
+                            shift = 5'b0;
+                            fn = 6'b0;
+                            imm = 16'b0;
+                            addr = 26'b0;
+                          end
+          endcase
+       end
+endmodule
+
+module `mname`
+(
+  input logic [`$bW-1`:0] instr,
+  input logic [(`$bW-1`):0] src0,
+  input logic [(`$bW-1`):0] src1,
+  input logic [(`$bW-1`):0] pc,
+  input logic [(`$bW-1`):0] memRdData,
+  output logic [(`$bW-1`):0] memRdAddr,
+  output logic memRdEn,
+  output logic memWrEn,
+  output logic [(`$bW-1`):0] memWrData,
+  output logic [(`$bW-1`):0] memWrAddr,
+  output logic [(`$bW-1`):0] dst0,
+  output logic [(`$bW-1`):0] pcNxt
+);
+
+logic [5:0] op,fn;
+logic [25:0] addr;
+logic [15:0] imm;
+logic [4:0] shift;
+logic flag;
+decoder d1 ( .instr (instr), .op(op), .fn(fn), .addr(addr), .imm(imm), .shift(shift), .flag(flag));
+
+ALU A1 (.flag(flag), .op(op), .pc(pc), .fn(fn), .addr(addr), .imm(imm), .shift(shift), .memRdData(memRdData), .memRdAddr(memRdAddr), .memRdEn(memRdEn),
+.memWrEn(memWrEn), .memWrAddr(memWrAddr), .memWrData(memWrData), .src0(src0), .src1(src1), .dst0(dst0), .pcNxt(pcNxt) );
+
+endmodule: `mname`

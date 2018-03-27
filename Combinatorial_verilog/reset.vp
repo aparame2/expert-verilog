@@ -1,0 +1,32 @@
+//reset module
+
+
+
+
+
+//reset//
+module `mname` (
+		
+		input int    clk_period ,
+
+		output logic rst,
+		output logic stall
+		
+		);
+
+   //YAY for RESET
+   initial begin
+      rst = 1'b1 ;
+      stall = 1'b1 ;
+      #1
+      rst = 1'b0 ;
+      stall = 1'b1 ;
+      #clk_period ;
+      #clk_period ;
+      #clk_period ;
+      #clk_period ; 
+      rst = 1'b1 ;
+      stall = 1'b0 ;
+   end
+   
+endmodule // reset

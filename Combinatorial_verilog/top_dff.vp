@@ -1,0 +1,135 @@
+// Top module for simulation // 
+
+//top//
+module `mname` ();
+
+   int seed;
+   int clk_period ;
+   real clk_period_ns ;
+   int clk_half_period;
+   
+   // Generate the wallace tree here
+   //; my $A    = 64 ;
+   //; my $B    = 2 ;
+   //; my $C    = 3 ;
+   //; my $P    = 4 ;
+   //; my @Width = ( 2 , 3 , 64);
+   //; my $dim  = 3 ;
+   
+   // local signals
+   logic [`$A-1`:0]    d[`$B-1`:0][`$C-1`:0] ;
+   logic [`$A-1`:0]    q[`$B-1`:0][`$C-1`:0] ; 
+   logic 	       clk ;
+   logic               rst ;
+   
+   
+
+//; ###Pipe Inputs for Comparison###
+//;   my $pipeR = generate(  'dff', 
+//;                          'my_dff_inst', 
+//;                          Width=>[@Width] ,
+//;                          Dim=>$dim ,
+//;                          PipelineDepth=>$P ,
+//;                          Retime=>"YES" ,
+//;                          ResetToZero=>1 ,
+//;                          Enable=>0 );
+      `$pipeR->instantiate()` ( .din(d) , .clk(clk) , .rst(rst), .q(q) );
+
+   always @(posedge clk) begin
+     $display( "t:%t d:0x%h q:0x%h\n" , $time, d[0][0] , q[0][0] );
+   end
+
+   task unpackedRand( output logic [`$A-1`:0] randAssign[`$B-1`:0][`$C-1`:0] );
+      begin
+	 for( int ii = 0 ; ii < `$B` ; ii++ ) begin
+            for( int jj = 0 ; jj < `$C` ; jj++ ) begin
+               randAssign[ii][jj] = { $random(seed) ,  $random(seed) ,  $random(seed) , $random(seed) } ;
+	    end
+	 end
+      end
+   endtask
+        
+  
+   //YAY for CLOCK
+   initial begin
+     if ( $test$plusargs("clk_period") ) 
+       begin
+	  $value$plusargs("clk_period=%f", clk_period_ns);
+	  clk_period = $rtoi(clk_period_ns*1000.0) ;
+	  clk_half_period = clk_period / 2 ;
+	  $display( "Using Clk Period= %f nS", clk_period_ns) ;
+	  $display( "Using Clk Period= %d pS", clk_period) ;
+       end else begin
+           $display( "ERROR: No Clock Period Set, Try again") ;
+	   $finish(2);
+       end
+     while(1) begin
+	 #clk_half_period clk = 1'b0 ;
+	 #clk_half_period clk = 1'b1 ;
+      end
+   end
+
+   //YAY for RESET
+   initial begin
+      rst = 1'b0 ;
+      #clk_period ;
+      #clk_period ;
+      #clk_period ;
+      #clk_period ; 
+      rst = 1'b1 ;
+   end
+   
+   initial begin
+      int i;
+      unpackedRand(d);
+      repeat (10) @(posedge clk);#1;
+      
+      $set_gate_level_monitoring("rtl_on");
+      #1
+	$set_toggle_region(top_dff);
+      #1
+	$toggle_start(); 
+      #1
+	$display("%t: AGENT 48 IS ALIVE -- NOW RUN TESTS...", $time);
+      for (i=0; i<10000; i++) begin
+	 unpackedRand(d);
+	 @(negedge clk);
+      end // for (i=0; i<10; i++)
+
+   $display("%t: FOO\n" , $time ) ;
+   
+   
+      #100;
+   
+      $display("%t: AGENT 48 IS DONE", $time);
+      repeat (10) @(posedge clk);
+      $toggle_stop();
+      $toggle_report ("top.saif",1.0e-12,top_dff);
+      $finish(2);
+   end
+   
+
+   // general intialization procedure
+   initial begin
+      int dummy;
+      // if this is a "+wave" run, it must record all signals
+      if ( $test$plusargs("wave") ) 
+	begin
+           $display("%t: Starting Wave Capture",$time);
+           //         levels  instance
+           $vcdpluson(0,        top_dff);
+	   $vcdplusmemon(0,     top_dff);
+        end
+      // find the seed for this run
+      if ( $test$plusargs("seed") ) 
+	begin
+	   $value$plusargs("seed=%d", seed);
+	end else begin
+           seed = 12345;
+	end
+      $display("%t:\tUsing seed %d",$time, seed);
+      dummy = $random(seed);
+   end
+   
+   
+endmodule : `mname`

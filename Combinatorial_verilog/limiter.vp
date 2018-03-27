@@ -1,0 +1,31 @@
+//clocker module
+
+//clocker//
+module `mname` (
+    input logic clk 
+    );
+
+    int maxCycles ;
+    int cnt ;
+   
+   
+    initial begin
+        if ( $test$plusargs("maxCycles") ) begin
+            $value$plusargs("maxCycles=%d", maxCycles );
+            $display( "Maximum Cycles = %d ", maxCycles ) ;
+        end else begin
+            maxCycles = 0 ;
+        end
+        cnt = 0 ;
+    end // initial begin
+
+    always  @( posedge clk )  begin
+        cnt <= cnt + 1 ;
+
+        if( (cnt > maxCycles) && (maxCycles != 0) ) begin
+            $display( "t:%t ERROR: Exceeded maximum number of cycles %d\n" , $time ,  maxCycles );
+            $finish(2);
+        end
+    end
+
+endmodule // clocker
