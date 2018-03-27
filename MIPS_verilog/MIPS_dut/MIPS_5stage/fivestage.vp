@@ -1,0 +1,422 @@
+//fivestage.vp
+
+//; use strict;
+//; use warnings FATAL=>qw(all);
+//; use diagnostics;
+
+//; my $wl = parameter( name=>"wordLength", val=>32, doc=>"Width of input" );
+//; my $iW = parameter( name=>"issueWidth", val=>1, doc=>"Number of fetched instructions" );
+//; my $rP = parameter( name=>"rfReadPorts", val=>2, doc=>"Number of RF read ports" );
+//; my $wP = parameter( name=>"rfWritePorts", val=>1, doc=>"Number of RF write ports" );
+//; my $rC = parameter( name=>"rfEntryCount", val=>32, max=>128, doc=>"Number of RF addresses");
+//; my $rA = parameter( name=>"rfAddressWidth", val=>5, max=>7 , doc=>"Bits for RF address" );
+//; my $btb = parameter( name=>"enableBTB", val=>0, list=>[0,1], doc=>"Enable BTB");
+//; my $btbW = parameter( name=>"entrySizeBTB", val=>34, max=>36, doc=>"BTB entry size");
+//; my $btbC = parameter( name=>"entryCountBTB", val=>0, max=>256, doc=>"BTB entries");
+//; my $mD = parameter( name=>"MipsMode", val=>"Cyc1",list=>["Cyc1","Cyc5","Smpl5","Fwd5","Dual"],doc=>"Iterative design state, testbench will ignore");
+module `mname` 
+(
+
+//ICache Ifc
+input logic [31:0] iCacheReadData,
+output logic [31:0] iCacheReadAddr,
+
+//DCache Ifc
+input logic [31:0] dCacheReadData,
+output logic [31:0] dCacheWriteData,
+output logic [31:0] dCacheAddr,
+output logic dCacheWriteEn,
+output logic dCacheReadEn,
+input logic [31:0] rfReadData_p0,rfReadData_p1,
+output logic [4:0] rfReadAddr_p0,rfReadAddr_p1,
+output logic rfReadEn_p0,rfReadEn_p1,
+output logic [31:0] rfWriteData_p0,
+output logic [4:0] rfWriteAddr_p0,
+output logic rfWriteEn_p0,
+
+// Globals
+input logic clk,
+input logic rst
+
+);
+
+//Output port variables
+ logic [63:0] alu_out;
+  
+ logic [31:0] pc4, pc_in_wire,pc_out_wire,imm_addr,alu_src1;
+ logic [31:0] str_out,lowmul_out,highmul_out,wb_out;
+ 
+ logic [4:0] alu_control;
+  
+ logic [27:0] j_imm;
+
+// Control Wires
+ logic divmul,regwrite,regread0,regread1,regdst0,alusrc0;
+ logic memread,memtoreg1,memtoreg0,memwrite;
+ logic beq,bne,bgtz,j,jr,lw,sw,b;
+
+ logic flush;
+
+//Local variables
+ logic pc_sel;
+ logic [4:0] temp_dst,shft_amt;
+ logic [5:0] op_code,fn_code;
+ logic [31:0] instr_in_RF, pc_in_RF, pcnext;
+
+
+//ID stage wires
+ logic alusrc0_rf;
+ logic [4:0] rs_rf, rt_rf;
+
+// Exec Stage wires
+ logic  divmul_exe;
+ logic  regwrite_exe;
+ logic  sw_exe;
+ logic  lw_exe;
+ logic  [4:0] temp_dst_exe;
+ logic  memread_exe;
+ logic  memtoreg1_exe;
+ logic  memtoreg0_exe;
+ logic  memwrite_exe;
+ logic  [31:0] alu_out_exe;
+ logic  [31:0] rfReadData_p0_exe, rfReadData_p1_exe, rfReadData_p1_exe_1, imm_exe;
+ logic  [4:0] shft_amt_exe;
+ logic  [4:0] alu_cntrl_exe;
+ logic alusrc0_exe;
+ logic [4:0] rs_exe, rt_exe;
+ logic [31:0] rfReadData_p0_hrdz,rfReadData_p1_hrdz;
+
+//Memory stage wires
+ logic  sw_dcache;
+ logic  lw_dcache;
+ logic  [4:0] temp_dst_dcache;
+ logic  memread_dcache;
+ logic  memtoreg1_dcache;
+ logic  memtoreg0_dcache;
+ logic  memwrite_dcache;
+ logic  [31:0] alu_out_dcache;
+ logic  [31:0] lowmul_out_dcache,highmul_out_dcache;
+ logic [31:0] rfReadData_p1_dcache;
+ logic [31:0] ld_out_dcache;
+ logic regwrite_dcache;
+ logic [4:0] rs_dcache, rt_dcache;
+
+//Write Back stage wires
+ logic  regwrite_wb;
+ logic  [4:0] temp_dst_wb;
+ logic  memtoreg1_wb;
+ logic  memtoreg0_wb;
+ logic  memwrite_wb;
+ logic  [31:0] alu_out_wb;
+ logic  [31:0] lowmul_out_wb,highmul_out_wb;
+ logic  [31:0] ld_out_wb;
+
+
+
+//****************************************************Instruction fetch stage******************************************************************//
+
+assign pc_in_wire = (pc_sel) ? pcnext : pc4;			// Mux for PC-in
+
+//PC module
+//; my $pcm = generate_base("pc","pcm");
+
+`$pcm->instantiate()`  (
+			.clk(clk),
+                        .rst(rst),
+       			.input_pc(pc_in_wire),
+      			.output_pc(pc_out_wire)
+    		  	);
+
+assign pc4 = pc_out_wire + 32'd1; 				// to be changed to 32'd4 // PC4
+assign pc_sel = (b | j)? 1'b1 : (jr == 1'b1)? 1'b1: 1'b0;	// select for PC-in	
+assign iCacheReadAddr = pc_out_wire; 				// Next Instruction fetch
+
+//IF_ID Register
+//; my $IF_ID_FF = generate_base("IF_ID","IF_ID_FF");
+ 
+`$IF_ID_FF->instantiate()` (
+			    .flush(flush),
+                            .clk(clk),
+			    .rst(rst),
+			    .instr_fetch(iCacheReadData),
+			    .pc_fetch(pc_out_wire),
+			    .instr_ID(instr_in_RF),
+		 	    .pc_ID(pc_in_RF)
+			    );
+
+//*********************************************Decoder Stage ---- ID Stage********************************************************************//
+
+assign imm_addr = {{16{instr_in_RF[15]}},{instr_in_RF[15:0]}};
+assign j_imm = {2'b0,instr_in_RF[25:0]};  
+assign op_code = instr_in_RF [31:26];
+assign fn_code = instr_in_RF [5:0];
+assign shft_amt = instr_in_RF[10:6];
+
+//RF module
+assign {rfReadAddr_p0,rfReadAddr_p1} = {instr_in_RF[25:21],instr_in_RF[20:16]};
+
+assign {rs_rf,rt_rf} = {instr_in_RF[25:21],instr_in_RF[20:16]};
+
+  
+// decoder module
+//; my $idm = generate_base("decoder","idm");
+
+`$idm->instantiate()`  (
+	    .op_code(op_code),
+	    .fn_code(fn_code),
+            .alu_cntrl(alu_control),
+            .divmul(divmul),
+            .regwrite(regwrite),
+            .regread0(regread0),
+            .regread1(regread1),
+            .regdst0(regdst0),
+            .alusrc0(alusrc0),
+            .memread(memread),
+            .memtoreg1(memtoreg1),
+            .memtoreg0(memtoreg0),
+            .memwrite(memwrite),
+            .beq(beq),
+	    .bne(bne),
+            .bgtz(bgtz),
+            .j(j),
+            .jr(jr),
+            .lw(lw),
+            .sw(sw)
+           );
+
+assign {rfReadEn_p0,rfReadEn_p1}={regread0,regread1};
+
+assign temp_dst = (regdst0) ? instr_in_RF[15:11]: instr_in_RF[20:16];
+
+
+// branch detetctor module
+//; my $bcm = generate_base("Bdetect","bcm");
+`$bcm->instantiate()` (
+	    .src0(rfReadData_p0),
+            .src1(rfReadData_p1),
+            .BEQ(beq),
+            .BNE(bne),
+            .BGTZ(bgtz),
+            .B_sel(b)
+           );
+
+
+//pc-nxt module  
+//; my $pcnm = generate_base("pcnxt","pcnm");
+
+`$pcnm->instantiate()`  (
+	  .pc(pc_out_wire),
+          .imm_extend(imm_addr),
+          .src0(rfReadData_p0),
+          .addr(j_imm),
+          .B_sel(b),
+          .JR_sel(jr),
+          .J_sel(j),
+          .pc_nxt(pcnext)
+         );
+ 
+
+
+//ID_EX_Register 
+//; my $idexreg = generate_base("rf_exec_ff","idexreg");
+`$idexreg->instantiate` (
+		.flush(flush),
+		.clk(clk),.rst(rst),
+		.rfReadData_p1_rf(rfReadData_p1),
+		.rfReadData_p0_rf(rfReadData_p0),
+		.imm_rf(imm_addr),
+		.regwrite_rf(regwrite),
+		.rs_rf(rs_rf),
+		.rt_rf(rt_rf),
+		.temp_dst_rf(temp_dst),
+		.sw_rf(sw),
+		.lw_rf(lw),
+                .shft_amt_rf(shft_amt),
+		.divmul_rf(divmul),
+		.alu_cntrl_rf(alu_control),
+		.memread_rf(memread),
+		.memtoreg1_rf(memtoreg1),
+		.memtoreg0_rf(memtoreg0),
+		.memwrite_rf(memwrite), 
+		.alusrc0_rf(alusrc0),		
+		.rfReadData_p1_exe(rfReadData_p1_exe),
+		.rfReadData_p0_exe(rfReadData_p0_exe),
+		.imm_exe(imm_exe),
+		.regwrite_exe(regwrite_exe),
+		.rs_exe(rs_exe),
+		.rt_exe(rt_exe),
+		.temp_dst_exe(temp_dst_exe),
+		.sw_exe(sw_exe),
+		.lw_exe(lw_exe),
+                .shft_amt_exe(shft_amt_exe),
+		.divmul_exe(divmul_exe),
+		.alu_cntrl_exe(alu_cntrl_exe),
+		.memread_exe(memread_exe),
+		.memtoreg1_exe(memtoreg1_exe),
+		.memtoreg0_exe(memtoreg0_exe),
+		.memwrite_exe(memwrite_exe),
+		.alusrc0_exe(alusrc0_exe)
+
+);
+
+//************************************************Execution Stage******************************************************************************//
+
+
+assign rfReadData_p1_exe_1 = (alusrc0_exe) ? imm_exe : rfReadData_p1_exe;   	// Choosing SRC1 
+
+
+//Hazard Unit
+//; my $hzrdm = generate_base("hrdz_unt","hzrdm");
+`$hzrdm->instantiate()`  (
+			.rs_rf(rs_rf),
+			.rs_exe(rs_exe),
+			.rt_exe(rt_exe),
+			.rd_exe(temp_dst_exe),
+			.rd_dcache(temp_dst_dcache),
+			.rd_wb(temp_dst_wb),
+			.alu_out_dcache(alu_out_dcache),
+			.wb_out(wb_out),
+			.memtoreg1_exe(memtoreg1_exe),
+			.memtoreg0_exe(memtoreg0_exe),
+			.regwrite_exe(regwrite_exe),
+			.regwrite_mem(regwrite_dcache),
+			.regwrite_wb(regwrite_wb),
+			.rfReadData_p0_exe(rfReadData_p0_exe),
+			.rfReadData_p1_exe(rfReadData_p1_exe_1),
+			.rfReadData_p0_hrdz(rfReadData_p0_hrdz),
+			.rfReadData_p1_hrdz(rfReadData_p1_hrdz),
+			.flush(flush)
+             );
+
+
+//Execution Unit module//
+//; my $alum = generate_base("exec_unit","alum");
+
+`$alum->instantiate()`  (
+	      .alusrc0(rfReadData_p0_hrdz),
+              .alusrc1(rfReadData_p1_hrdz),
+              .shft_amt(shft_amt_exe),
+              .alu_ctrl(alu_cntrl_exe),
+              .alu_out(alu_out)
+             );
+
+
+//DIVMUL Module
+//; my $multlatchm = generate_base("divmul","multlatchm");
+
+`$multlatchm->instantiate()`(
+	   .alu_out(alu_out),
+           .divmul(divmul_exe),
+           .lowmul_out(lowmul_out),
+           .highmul_out(highmul_out)
+          );
+
+assign alu_out_exe = alu_out [31:0]; 
+
+//EXEC_DCACHE Register
+//; my $ex_dff = generate_base("exec_dcache_ff","ex_dff");
+`$ex_dff->instantiate()`(
+		 .clk(clk),.rst(rst),	
+		.rs_exe(rs_exe),
+		.rt_exe(rt_exe),
+		.regwrite_exe(regwrite_exe),
+		.temp_dst_exe(temp_dst_exe),
+		.sw_exe(sw_exe),
+		.lw_exe(lw_exe),
+                .alu_out_exe(alu_out_exe),
+		.lowmul_out_exe(lowmul_out),
+                .highmul_out_exe(highmul_out),
+                .memread_exe(memread_exe),
+		.memtoreg1_exe(memtoreg1_exe),
+		.memtoreg0_exe(memtoreg0_exe),
+		.memwrite_exe(memwrite_exe),
+		.rfReadData_p1_exe(rfReadData_p1_exe_1),
+		.alu_out_dcache(alu_out_dcache),
+		.lowmul_out_dcache(lowmul_out_dcache),
+                .highmul_out_dcache(highmul_out_dcache),
+		.rs_dcache(rs_dcache),
+		.rt_dcache(rt_dcache),
+		.temp_dst_dcache(temp_dst_dcache),
+                .memread_dcache(memread_dcache),
+		.memtoreg1_dcache(memtoreg1_dcache),
+                .memtoreg0_dcache(memtoreg0_dcache),
+                .memwrite_dcache(memwrite_dcache),
+                .sw_dcache(sw_dcache),
+		.lw_dcache(lw_dcache),
+		.regwrite_dcache(regwrite_dcache),
+		.rfReadData_p1_dcache(rfReadData_p1_dcache)
+);
+
+//***********************************************************Memory Stage***************************************************************************//
+
+//D$ module
+
+assign dCacheAddr = alu_out_exe;
+
+assign dCacheWriteEn = memwrite_dcache;
+assign dCacheReadEn = memread_dcache;
+
+//Load_store Module
+//; my $loadm = generate_base("ldstr","loadm");
+
+`$loadm->instantiate()` (
+	   .lw(lw_dcache),
+           .dch_dat(dCacheReadData),
+           .RF_RD_dat(rfReadData_p1_dcache),
+           .ld_out(ld_out_dcache),
+           .sw(sw_dcache),
+           .str_out(str_out)
+          );
+
+assign dCacheWriteData = str_out;
+
+
+
+//Write Back Register
+//; my $wb_dff = generate_base("dcache_wb_ff","wb_dff");
+`$wb_dff->instantiate()`(
+			 .clk(clk),.rst(rst),
+		        .alu_out_dcache(alu_out_dcache),
+			.lowmul_out_dcache(lowmul_out_dcache),
+		        .highmul_out_dcache(highmul_out_dcache),
+			.ld_out_dcache(ld_out_dcache),
+			.temp_dst_dcache(temp_dst_dcache),
+			.memtoreg1_dcache(memtoreg1_dcache),
+		        .memtoreg0_dcache(memtoreg0_dcache),
+		        .memwrite_dcache(memwrite_dcache),
+			.regwrite_dcache(regwrite_dcache),
+                        .alu_out_wb (alu_out_wb),
+			.highmul_out_wb (highmul_out_wb),
+			.lowmul_out_wb (lowmul_out_wb),
+			.ld_out_wb (ld_out_wb),
+			.temp_dst_wb (temp_dst_wb),
+			.memtoreg1_wb (memtoreg1_wb),
+			.memtoreg0_wb(memtoreg0_wb),
+			.memwrite_wb(memwrite_wb),
+			.regwrite(regwrite_wb)
+);
+
+
+//********************************************************Write Back Stage*****************************************************************************//
+
+//Write Back module
+//; my $wb_muxm = generate_base("wb","wb_muxm");
+  `$wb_muxm->instantiate()` (
+         .lowmul(lowmul_out_wb),
+         .highmul(highmul_out_wb),
+         .alu_out(alu_out_wb),
+         .ld_out(ld_out_wb),
+         .memtoreg0(memtoreg0_wb),
+         .memtoreg1(memtoreg1_wb),
+         .wb_out(wb_out)
+        );
+
+//RF module
+assign rfWriteData_p0 = wb_out;
+assign rfWriteAddr_p0 = temp_dst_wb;
+
+assign rfWriteEn_p0 = regwrite_wb;
+
+//*************************************************************End***************************************************************************//
+
+endmodule

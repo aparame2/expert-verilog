@@ -1,0 +1,65 @@
+//ID_exec_FF.vp
+
+module ID_exec_FF
+(
+input logic [31:0] src0,src1
+input logic memread, memwrite, memtoreg0, memtoreg1,
+input logic regread0, regread1, regdst0, regwrite,
+input logic [4:0] alucntrl,
+input logic lw, sw, divmul,
+input logic [31:0] imm_addr,
+
+input logic clk,
+input logic rst,
+   
+output logic [31:0] src0_reg, src1_reg,
+output logic memread_reg, memwrite_reg, memtoreg0_reg, memtoreg1_reg,
+output logic regread0_reg, regread1_reg, regdst0_reg, regwrite_reg,
+output logic [4:0] alucntrl_reg,
+output logic lw_reg, sw_reg, divmul_reg,
+output logic [31:0] imm_addr_reg,
+);
+
+
+always@(posedge clk)
+begin 
+	if(!rst)
+	  begin
+		src0_reg <= 32'd0;
+		src1_reg <= 32'd0;
+		memread_reg <= 1'd0;
+		memwrite_reg <= 1'd0;
+		memtoreg0_reg <= 1'd0;
+		memtoreg1_reg <= 1'd0;
+		regread0_reg <= 1'd0;
+		regread1_reg <= 1'd0;
+		regdst0_reg <= 1'd0;
+		regwrite_reg <= 1'd0;
+		alucntrl_reg <= 5'd0;
+		lw_reg <= 1'd0;
+		sw_reg <= 1'd0;
+		divmul_reg <= 1'd0;
+		imm_addr_reg <= 32'd0;
+	  end
+	else
+	  begin
+		src0_reg <= src0;
+		src1_reg <= src1;
+		memread_reg <= memread;
+		memwrite_reg <= memwrite;
+		memtoreg0_reg <= memtoreg0;
+		memtoreg1_reg <= memtoreg1;
+		regread0_reg <= regread0;
+		regread1_reg <= regread1;
+		regdst0_reg <= regdst0;
+		regwrite_reg <= regwrite;
+		alucntrl_reg <= alucntrl;
+		lw_reg <= lw;
+		sw_reg <= sw;
+		divmul_reg <= divmul;
+		imm_addr_reg <= imm_addr;
+	  end
+end
+endmodule
+
+

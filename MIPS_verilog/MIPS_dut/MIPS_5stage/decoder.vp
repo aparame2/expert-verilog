@@ -1,0 +1,94 @@
+//decoder.vp
+
+//; use strict;
+//; use warnings FATAL=>qw(all);
+//; use diagnostics;
+
+//; my $wl = parameter( name=>"wordLength", val=>32, doc=>"Width of input" );
+//; my $iW = parameter( name=>"issueWidth", val=>1, doc=>"Number of fetched instructions" );
+//; my $rP = parameter( name=>"rfReadPorts", val=>2, doc=>"Number of RF read ports" );
+//; my $wP = parameter( name=>"rfWritePorts", val=>1, doc=>"Number of RF write ports" );
+//; my $rC = parameter( name=>"rfEntryCount", val=>32, max=>128, doc=>"Number of RF addresses");
+//; my $rA = parameter( name=>"rfAddressWidth", val=>5, max=>7 , doc=>"Bits for RF address" );
+
+module `mname`
+(
+
+input logic [5:0] op_code,
+input logic [5:0] fn_code,
+output logic divmul,
+output logic regwrite,regread0,regread1,regdst0,alusrc0,
+output logic memread,memtoreg1,memtoreg0,memwrite,
+output logic beq,bne,bgtz,j,jr,lw,sw,
+output logic [4:0] alu_cntrl
+
+);
+  
+logic [14:0] cntrl;
+
+always_comb
+begin
+    	beq = 1'b0;
+	bne = 1'b0; 
+	bgtz = 1'b0;
+	j = 1'b0;
+	jr = 1'b0;
+	lw = 1'b0;
+	sw = 1'b0;
+
+      casex({op_code,fn_code})
+			12'b000000_100000 : cntrl = 15'b00000_0_1_1_1_1_0_0_0_0_0;// ADD
+			12'b001000_xxxxxx : cntrl = 15'b00000_0_1_1_0_0_1_0_0_0_0;// ADDI
+			12'b000000_100100 : cntrl = 15'b00100_0_1_1_1_1_0_0_0_0_0;// AND
+			12'b001100_xxxxxx : cntrl = 15'b10100_0_1_1_0_0_1_0_0_0_0;// ANDI	
+        		12'b000100_xxxxxx : begin
+			                    cntrl = 15'b00000_0_0_1_1_0_0_0_0_0_0;// BEQ
+					    beq = 1'b1;
+					    end
+			12'b000111_xxxxxx : begin
+			                    cntrl = 15'b00000_0_0_1_0_0_0_0_0_0_0;// BGTZ
+					    bgtz = 1'b1;
+					    end
+			12'b000101_xxxxxx : begin 
+			                    cntrl = 15'b00000_0_0_1_1_0_0_0_0_0_0;// BNE
+					    bne = 1'b1;
+					    end
+        		12'b000010_xxxxxx : begin
+			                    cntrl = 15'b00000_0_0_0_0_0_0_0_0_0_0;// J
+					    j = 1'b1;
+					    end
+			12'b000000_001000 : begin
+			                    cntrl = 15'b00000_0_0_1_0_0_0_0_0_0_0;// JR
+					    jr = 1'b1;
+					    end
+        		12'b100011_xxxxxx : begin
+			                    cntrl = 15'b00000_0_1_1_0_0_1_1_0_1_0;// LW
+					    lw = 1'b1;
+					    end
+        		12'b000000_100111 : cntrl = 15'b00111_0_1_1_1_1_0_0_0_0_0;// NOR				
+			12'b000000_100101 : cntrl = 15'b00101_0_1_1_1_1_0_0_0_0_0;// OR
+			12'b001101_xxxxxx : cntrl = 15'b10101_0_1_1_0_0_1_0_0_0_0;// ORI
+			12'b000000_101010 : cntrl = 15'b01000_0_1_1_1_1_0_0_0_0_0;// SLT
+			12'b001010_xxxxxx : cntrl = 15'b01000_0_1_1_0_0_1_0_0_0_0;// SLTI
+			12'b000000_000011 : cntrl = 15'b01110_0_1_0_1_1_0_0_0_0_0;// SRA
+			12'b000000_100010 : cntrl = 15'b00010_0_1_1_1_1_0_0_0_0_0;// SUB			
+        		12'b101011_xxxxxx : begin
+			                    cntrl = 15'b00000_0_0_1_1_0_1_0_0_0_1;// SW
+					    sw = 1'b1;
+					    end			
+        		12'b000000_100110 : cntrl = 15'b00110_0_1_1_1_1_0_0_0_0_0;// XOR
+			12'b001110_xxxxxx : cntrl = 15'b10110_0_1_1_0_0_1_0_0_0_0;// XORI
+			12'b000000_010000 : cntrl = 15'b00000_0_1_0_0_1_0_0_1_0_0;// MFHI
+			12'b000000_010010 : cntrl = 15'b00000_0_1_0_0_1_0_0_1_1_0;// MFLO
+			12'b000000_011000 : cntrl = 15'b10000_1_0_1_1_0_0_0_0_0_0;// MULT
+			12'b000000_011010 : cntrl = 15'b10010_1_0_1_1_0_0_0_0_0_0;// DIV	
+			default           : cntrl = 15'b00000_0_0_0_0_0_0_0_0_0_0;// NO Instruction Match
+		
+       endcase    
+end
+  
+assign {alu_cntrl,divmul,regwrite,regread0,regread1,regdst0,alusrc0,memread,memtoreg1,memtoreg0,memwrite} = cntrl;
+
+endmodule
+
+

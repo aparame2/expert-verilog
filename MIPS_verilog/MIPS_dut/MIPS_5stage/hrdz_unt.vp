@@ -1,0 +1,83 @@
+//hrdz_unt.vp
+
+//; use strict;
+//; use warnings FATAL=>qw(all);
+//; use diagnostics;
+
+//; my $wl = parameter( name=>"wordLength", val=>32, doc=>"Width of input" );
+//; my $iW = parameter( name=>"issueWidth", val=>1, doc=>"Number of fetched instructions" );
+//; my $rP = parameter( name=>"rfReadPorts", val=>2, doc=>"Number of RF read ports" );
+//; my $wP = parameter( name=>"rfWritePorts", val=>1, doc=>"Number of RF write ports" );
+//; my $rC = parameter( name=>"rfEntryCount", val=>32, max=>128, doc=>"Number of RF addresses");
+//; my $rA = parameter( name=>"rfAddressWidth", val=>5, max=>7 , doc=>"Bits for RF address" );
+
+module `mname`
+(
+input logic [4:0] rs_rf,rs_exe,rt_exe,rd_exe,rd_dcache,rd_wb,
+input logic [31:0] alu_out_dcache,wb_out,
+input logic memtoreg1_exe,memtoreg0_exe,
+input logic regwrite_exe,regwrite_mem,regwrite_wb,
+input logic [31:0] rfReadData_p0_exe,rfReadData_p1_exe,
+output logic [31:0] rfReadData_p0_hrdz, rfReadData_p1_hrdz,
+output logic flush
+);
+
+logic [1:0] cntrl_src1, cntrl_src0;
+logic load_cntrl;
+
+assign load_cntrl = ({memtoreg1_exe,memtoreg0_exe} == 2'b01) ? 1'b1 : 1'b0;  
+
+always_comb
+begin
+	if((rs_exe == rd_exe)&&(regwrite_exe)&&(rs_exe!=0))
+	     cntrl_src0 = 2'b01;
+	else if ((rs_exe == rd_dcache)&&(regwrite_mem)&&(rs_exe!=0))
+	     cntrl_src0 = 2'b10;
+	else if ((rs_exe == rd_wb)&&(regwrite_wb)&&(rs_exe!=0))
+	     cntrl_src0 = 2'b11;
+	else
+	     cntrl_src0 = 2'b00;
+end
+
+always_comb
+begin
+	if((rt_exe == rd_exe)&&(regwrite_exe)&&(rt_exe!=0))
+	     cntrl_src1 = 2'b01;
+	else if ((rt_exe == rd_dcache)&&(regwrite_mem)&&(rt_exe!=0))
+	     cntrl_src1 = 2'b10;
+	else if ((rt_exe == rd_wb)&&(regwrite_wb)&&(rt_exe!=0))
+	     cntrl_src1 = 2'b11;
+	else
+	     cntrl_src1 = 2'b00;
+end
+
+//////////////////////MUX for ALUSRC0////////////////
+always_comb
+																	
+	begin
+                 if(cntrl_src0 == 2'b01)
+                    	rfReadData_p0_hrdz= rfReadData_p0_exe;
+                 else if(cntrl_src0 == 2'b10)															
+                	rfReadData_p0_hrdz= alu_out_dcache;
+		 else if(cntrl_src0 == 2'b11)			
+		  	rfReadData_p0_hrdz= wb_out;														
+		 else if (cntrl_src0 == 2'b00)
+                   	rfReadData_p0_hrdz= rfReadData_p0_exe;																
+	end
+
+//////////////////////MUX for ALUSRC1////////////////
+ always_comb																	
+	begin
+                 if(cntrl_src1 == 2'b01)
+                     	rfReadData_p1_hrdz= rfReadData_p1_exe;
+                 else if(cntrl_src1 == 2'b10)															
+                	rfReadData_p1_hrdz= alu_out_dcache;
+		 else if(cntrl_src1 == 2'b11)			
+		   	rfReadData_p1_hrdz= wb_out;																	
+		 else if(cntrl_src1 == 2'b00)	
+                   	rfReadData_p1_hrdz= rfReadData_p1_exe;																
+	end
+
+assign flush = ((rs_rf == rd_exe) && (load_cntrl)) ? 1'b1 : 1'b0;
+
+endmodule

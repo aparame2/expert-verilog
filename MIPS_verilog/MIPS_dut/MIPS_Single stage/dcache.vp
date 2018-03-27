@@ -1,0 +1,31 @@
+//dcache.vp
+//; # Any Line that starts with a slash slash semi-colon is perl
+//; # So we can follow our good habits from before
+//; use strict ;                   # Use a strict interpretation
+//; use warnings FATAL=>qw(all);   # Turn warnings into errors
+//; use diagnostics ;              # Print helpful info, for errors
+module `mname`(
+	input clk,
+	input rst,
+	input logic [31:0] dCacheAddr,
+	input logic [31:0] dCacheWriteData,
+	input logic dCacheWriteEn,
+	input logic dCacheReadEn,
+	output logic [31:0] dCacheReadData);
+
+	logic [3:0] [7:0] dcache [0:99999];
+	int i;
+
+	always@(posedge clk)
+	begin
+     	    if(dCacheWriteEn) begin
+		   dcache[dCacheAddr] <= dCacheWriteData;
+	    end
+	end
+	
+	always_comb
+              dCacheReadData = dCacheReadEn ? dcache[dCacheAddr] : 32'b0;
+
+	
+endmodule:`mname`
+

@@ -1,0 +1,89 @@
+//rf_exec_ff.vp
+
+module rf_exec_ff
+(
+input logic clk, rst,
+input logic flush,
+input logic [31:0] rfReadData_p0_rf, rfReadData_p1_rf, imm_rf,
+input logic [4:0] alu_cntrl_rf,shft_amt_rf,
+input logic divmul_rf, regwrite_rf, sw_rf, lw_rf,
+input logic [4:0] rs_rf,rt_rf,
+input logic [4:0] temp_dst_rf,
+input logic memread_rf, memtoreg1_rf, memtoreg0_rf, memwrite_rf,
+input logic alusrc0_rf,
+output logic regwrite_exe,sw_exe, lw_exe,divmul_exe,
+output logic [4:0] rs_exe,rt_exe,
+output logic  [4:0] temp_dst_exe,
+output logic memread_exe, memtoreg1_exe, memtoreg0_exe, memwrite_exe,
+output logic [31:0] rfReadData_p0_exe,rfReadData_p1_exe,imm_exe,
+output logic [4:0] alu_cntrl_exe,shft_amt_exe,
+output logic alusrc0_exe
+);
+
+always @(posedge clk)
+begin
+	if (!rst )
+		begin
+			rs_exe <= 5'b0;
+			rt_exe <= 5'b0;
+			rfReadData_p1_exe <= 32'b0;
+			rfReadData_p0_exe <= 32'b0;
+			imm_exe <= 32'b0;
+			regwrite_exe <= 1'b0;
+			temp_dst_exe <= 5'b0;
+			sw_exe <= 1'b0;
+			lw_exe <= 1'b0;
+			divmul_exe <= 1'b0;
+			alu_cntrl_exe <= 5'b0;
+			memread_exe <= 1'b0;
+			memtoreg1_exe <= 1'b0;
+			memtoreg0_exe <= 1'b0;
+			memwrite_exe <= 1'b0;
+            shft_amt_exe <= 5'b0;
+			alusrc0_exe <= 1'b0;
+			
+		end
+	else if (flush)
+		begin
+			rs_exe <= 5'b0;
+			rt_exe <= 5'b0;
+			rfReadData_p1_exe <= 32'b0;
+			rfReadData_p0_exe <= 32'b0;
+			imm_exe <= 32'b0;
+			regwrite_exe <= 1'b0;
+			temp_dst_exe <= 5'b0;
+			sw_exe <= 1'b0;
+			lw_exe <= 1'b0;
+			divmul_exe <= 1'b0;
+			alu_cntrl_exe <= 5'b0;
+			memread_exe <= 1'b0;
+			memtoreg1_exe <= 1'b0;
+			memtoreg0_exe <= 1'b0;
+			memwrite_exe <= 1'b0;
+            shft_amt_exe <= 5'b0;
+			alusrc0_exe <= 1'b0;		
+		end
+	else
+	       begin     
+		        rfReadData_p1_exe <= rfReadData_p1_rf;
+			rfReadData_p0_exe <= rfReadData_p0_rf;
+			imm_exe <= imm_rf;
+			regwrite_exe <= regwrite_rf;
+			rs_exe <= rs_rf;
+			rt_exe <= rt_rf;
+			temp_dst_exe <= temp_dst_rf;
+			sw_exe <= sw_rf;
+			lw_exe <= lw_rf;
+			divmul_exe <= divmul_rf;
+			alu_cntrl_exe <= alu_cntrl_rf;
+			memread_exe <= memread_rf;
+			memtoreg1_exe <= memtoreg1_rf;
+			memtoreg0_exe <= memtoreg0_rf;
+			memwrite_exe <= memwrite_rf;
+     		shft_amt_exe <= shft_amt_rf;
+			alusrc0_exe <= alusrc0_rf;
+
+	       end
+end
+endmodule
+       

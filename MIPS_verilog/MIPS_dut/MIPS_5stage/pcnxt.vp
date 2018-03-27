@@ -1,0 +1,43 @@
+//pcnxt.vp
+
+//; use strict;
+//; use warnings FATAL=>qw(all);
+//; use diagnostics;
+
+//; my $wl = parameter( name=>"wordLength", val=>32, doc=>"Width of input" );
+//; my $iW = parameter( name=>"issueWidth", val=>1, doc=>"Number of fetched instructions" );
+//; my $rP = parameter( name=>"rfReadPorts", val=>2, doc=>"Number of RF read ports" );
+//; my $wP = parameter( name=>"rfWritePorts", val=>1, doc=>"Number of RF write ports" );
+//; my $rC = parameter( name=>"rfEntryCount", val=>32, max=>128, doc=>"Number of RF addresses");
+//; my $rA = parameter( name=>"rfAddressWidth", val=>5, max=>7 , doc=>"Bits for RF address" );
+
+module `mname`
+(
+	input logic B_sel,
+	input logic J_sel,
+	input logic JR_sel,
+	input logic [31:0] pc,
+	input logic [31:0] imm_extend,
+	input logic [31:0] src0,
+	input logic [27:0] addr,
+	output logic [31:0] pc_nxt
+);
+
+logic [31:0] target, jmpaddr;
+
+//assign pc4 = pc + 32'd4;				//PC + 4 // change 32'd1 to 32'd4
+
+assign jmpaddr = {pc[31:28],addr};			//Jump address
+assign pc_nxt = (J_sel) ? jmpaddr : target;		//Jump or other address
+
+always_comb
+	begin
+		case ({B_sel,JR_sel})
+			2'b01 :	 target = pc + src0;		//Jump reg address
+			2'b10 :	 target = pc + imm_extend;	//Branch address
+			2'b00 :  target = pc;			//Not Branch or JR
+			2'b11 :  target = 32'b0;		//NOt possible
+		endcase
+	end
+endmodule
+

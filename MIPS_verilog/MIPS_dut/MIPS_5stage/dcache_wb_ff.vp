@@ -1,0 +1,53 @@
+//dcache_wb_ff.vp
+
+module dcache_wb_ff
+(
+input logic clk, rst,
+input logic [31:0] alu_out_dcache,
+input logic [31:0] lowmul_out_dcache,highmul_out_dcache,
+input logic [31:0] ld_out_dcache,
+input logic [4:0]  temp_dst_dcache,
+input logic memtoreg1_dcache,memtoreg0_dcache,memwrite_dcache,
+input logic regwrite_dcache,
+
+output logic [31:0] alu_out_wb,
+output logic [31:0] lowmul_out_wb,highmul_out_wb,
+output logic [31:0] ld_out_wb,
+output logic [4:0]  temp_dst_wb,
+output logic memtoreg1_wb,memtoreg0_wb,memwrite_wb,regwrite
+);
+
+always @(posedge clk)
+begin
+	if( !rst )
+		begin
+			alu_out_wb <= 32'b0;
+			highmul_out_wb <= 32'b0;
+			lowmul_out_wb <= 32'b0;
+			ld_out_wb <= 32'b0;
+			temp_dst_wb <= 5'b0;
+			memtoreg1_wb <= 1'b0;
+			memtoreg0_wb <= 1'b0;
+			memwrite_wb <= 1'b0;
+                        regwrite <= 1'b0;
+                       
+		end
+
+	else
+		begin
+			alu_out_wb <= alu_out_dcache;
+			highmul_out_wb <= highmul_out_dcache;
+			lowmul_out_wb <= lowmul_out_dcache;
+			ld_out_wb <= ld_out_dcache;
+			temp_dst_wb <= temp_dst_dcache;
+			memtoreg1_wb <= memtoreg1_dcache;
+			memtoreg0_wb <= memtoreg0_dcache;
+			memwrite_wb <= memwrite_dcache;
+                        regwrite <= regwrite_dcache;
+		end
+end
+endmodule
+
+
+
+

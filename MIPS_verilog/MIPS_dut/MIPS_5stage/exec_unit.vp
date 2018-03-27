@@ -1,0 +1,53 @@
+//exec_unit.vp
+
+//; use strict;
+//; use warnings FATAL=>qw(all);
+//; use diagnostics;
+
+//; my $wl = parameter( name=>"wordLength", val=>32, doc=>"Width of input" );
+//; my $iW = parameter( name=>"issueWidth", val=>1, doc=>"Number of fetched instructions" );
+//; my $rP = parameter( name=>"rfReadPorts", val=>2, doc=>"Number of RF read ports" );
+//; my $wP = parameter( name=>"rfWritePorts", val=>1, doc=>"Number of RF write ports" );
+//; my $rC = parameter( name=>"rfEntryCount", val=>32, max=>128, doc=>"Number of RF addresses");
+//; my $rA = parameter( name=>"rfAddressWidth", val=>5, max=>7 , doc=>"Bits for RF address" );
+
+module `mname`
+(
+  
+input logic [4:0] alu_ctrl,
+input logic signed [31:0] alusrc1,
+input logic signed [31:0] alusrc0,
+input logic signed [4:0] shft_amt,
+output logic signed [63:0] alu_out
+
+);
+
+logic [63:0] alutemp;
+logic signed [31:0] imm;
+
+assign imm = {16'b0,alusrc1[15:0]};
+assign alu_out = alutemp;
+
+always_comb
+	begin
+		case(alu_ctrl)
+			5'b00000 : alutemp = alusrc0 + alusrc1;							//ADD
+			5'b00010 : alutemp = alusrc0 - alusrc1;							//SUB
+			5'b00100 : alutemp = alusrc0 & alusrc1;							//AND
+			5'b00101 : alutemp = alusrc0 | alusrc1;							//OR
+			5'b00110 : alutemp = alusrc0 ^ alusrc1;							//XOR
+			5'b00111 : alutemp = ~(alusrc0 | alusrc1);						//NOR	
+			5'b01000 : alutemp = (alusrc0 < alusrc1) ? 32'b1 : 32'b0;				//SLT
+			5'b01110 : alutemp = (alusrc1 >> shft_amt);						//SRA
+			5'b10000 : alutemp = alusrc0 * alusrc1;							//MULT
+			5'b10010 : begin
+              		   		 alutemp [31:0]  = alusrc0 / alusrc1;					//DIV
+					 alutemp [63:32] = alusrc0 % alusrc1; 
+            		   	   end
+			5'b10100 : alutemp = alusrc0 & imm;							//ANDI
+			5'b10101 : alutemp = alusrc0 | imm;							//ORI
+			5'b10110 : alutemp = alusrc0 ^ imm;							//XORI
+			default  : alutemp = 64'd0;
+		endcase
+	end
+endmodule

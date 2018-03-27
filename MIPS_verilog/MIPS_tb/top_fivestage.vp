@@ -1,0 +1,146 @@
+//top_fivestage.vp
+
+module `mname` ();
+
+//; my $dut1 = generate_base("fivestage", "my_fivestage");
+//; my $env1 = generate_base("env","my_env");
+         
+	 logic [31:0] iCacheReadData;
+	 logic [31:0] iCacheReadAddr;
+	
+	 //DCache Ifc
+	 logic [31:0] dCacheReadData;
+	 logic [31:0] dCacheWriteData;
+	 logic [31:0] dCacheAddr;
+	 logic		   dCacheWriteEn;
+	 logic 		   dCacheReadEn;
+
+	 //Register File Ifc
+ 	 logic [31:0] rfReadData_p0;
+ 	 logic [4:0]  rfReadAddr_p0;
+ 	 logic        rfReadEn_p0;
+ 	 logic [31:0] rfReadData_p1;
+ 	 logic [4:0] rfReadAddr_p1;
+ 	 logic       rfReadEn_p1;
+ 	 logic [31:0] rfWriteData_p0;
+ 	 logic [4:0] rfWriteAddr_p0;
+ 	 logic       rfWriteEn_p0;
+	
+	 logic clk, rst;
+
+`$dut1->instantiate()` (.*);
+`$env1->instantiate()` (.*);
+
+
+	 parameter test = 0;	
+	 bit trigger_start, trigger_stop;
+	 logic signed [31:0] exp_results [0:40];
+	 logic signed [31:0] dut_results [0:40];
+	 logic signed [31:0] pc_check1, pc_check2, pc_check3;
+
+//; my $region = "my_fivestage";
+
+initial begin
+// if this is a "+wave" run, it must record all signals
+	if ( $test$plusargs("wave") ) begin
+		$display("%t: Starting Wave Capture",$time);
+		// levels, instance
+		$vcdpluson(0, `$region` );
+		$vcdplusmemon(0, `$region` );
+		end
+end
+
+initial begin
+$set_toggle_region(`$region`);
+$toggle_start();
+#1
+$toggle_stop();
+$toggle_report( "top.saif" , 1.0e-12 , `$region` );
+end
+
+	 initial
+	 begin
+		int i;
+
+		for(i=0;i<40;i++)
+		begin
+			exp_results[i] = 32'b1;
+			dut_results[i]=32'b1;
+	 	end
+	 end
+	 
+
+	 // Clock generator
+	 initial
+	 begin
+	    clk = 0;
+	    forever #200 clk = ~clk;
+	 end
+	 
+/////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////Steps to run the testcase////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+//1.Configure the icache, dcahe and register file
+//2.Fill the icache with instructions and flush out the dcache and registerfile
+//3.Store the expected results in a vector file
+//4.Trigger reset
+//5.Start the test. Wait for the test to be completed
+//6.Store the DUT results in a vector file
+//7.Wait for scoreboard to read the contents of both the files and compare
+//8.Flag as PASS or FAIL and calculate IPC
+
+	always@(posedge clk)
+	begin
+		pc_check1 <= my_env.my_icache.iCacheReadData;
+		pc_check2 <= pc_check1;
+		pc_check3 <= pc_check2;
+		if((pc_check1 == pc_check2) && (pc_check2 == pc_check3)) 
+		my_env.endprog <= 1;
+       end
+
+	always@(posedge clk)
+	if(rst)
+		my_env.compute_ipc();
+
+
+
+	 // Testcase
+	 initial
+ 	 begin
+       		int i;
+	$dumpfile("dump.vcd"); 
+	$dumpvars;
+
+		my_env.config_mem();
+		$display("Configuration of memory done \n");
+
+	   	my_env.init_mem();
+		$display("Initialization of memory done \n");
+
+		if(test == 0)
+			my_env.load_sumofdigits(); 
+
+		$display("DUT in reset state \n");
+	    	my_env.reset();
+		$display("DUT out of reset, PC is %h\n",my_env.my_icache.iCacheReadAddr);
+
+		my_env.get_results();
+		repeat (200) @(posedge clk);
+
+		for(i=0;i<=31;i=i+1)
+		$display("At %d  design RF contents is %h Testbench RF contents %h",i,my_env.my_regfile.register_file[i],my_env.registerfile_model[i]);
+
+	/*	if(test == 0)
+			my_env.compare_factorial_recursive();
+
+			my_env.compute_ipc_final();
+
+ 	*/		
+		$display("DUT finished execution \n");
+		
+		$finish;
+	 end
+
+endmodule
+
+

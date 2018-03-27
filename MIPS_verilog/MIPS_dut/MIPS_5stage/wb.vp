@@ -1,0 +1,41 @@
+//write back stage
+
+//; use strict;
+//; use warnings FATAL=>qw(all);
+//; use diagnostics;
+
+//; my $wl = parameter( name=>"wordLength", val=>32, doc=>"Width of input" );
+//; my $iW = parameter( name=>"issueWidth", val=>1, doc=>"Number of fetched instructions" );
+//; my $rP = parameter( name=>"rfReadPorts", val=>2, doc=>"Number of RF read ports" );
+//; my $wP = parameter( name=>"rfWritePorts", val=>1, doc=>"Number of RF write ports" );
+//; my $rC = parameter( name=>"rfEntryCount", val=>32, max=>128, doc=>"Number of RF addresses");
+//; my $rA = parameter( name=>"rfAddressWidth", val=>5, max=>7 , doc=>"Bits for RF address" );
+
+module `mname`
+(
+	input logic [31:0] alu_out,
+	input logic [31:0] ld_out,
+	input logic [31:0] lowmul,
+	input logic [31:0] highmul,
+	input logic memtoreg0, memtoreg1,
+	output logic [31:0] wb_out
+);
+
+logic [1:0] wb_cntrl;
+
+assign wb_cntrl = {memtoreg1, memtoreg0};
+
+always_comb
+begin
+	if(wb_cntrl == 2'b00)
+		wb_out = alu_out;
+	else if (wb_cntrl == 2'b10)
+		wb_out = highmul;
+	else if (wb_cntrl == 2'b01)
+		wb_out = ld_out;
+	else if (wb_cntrl == 2'b11)
+		wb_out = lowmul;
+	else
+		wb_out = 32'b0;
+end
+endmodule

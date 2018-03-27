@@ -1,0 +1,24 @@
+//Load Store Module
+
+//; use strict;
+//; use warnings FATAL=>qw(all);
+//; use diagnostics;
+
+module `mname`
+(
+
+	input logic lw,
+	input logic sw,
+	input logic [31:0] dch_dat,
+	input logic [31:0] RF_RD_dat,
+	output logic [31:0] ld_out,
+	output logic [31:0] str_out
+
+);
+
+  
+assign ld_out  = (lw == 1'b1) ? dch_dat : 32'd0;
+assign str_out = (sw == 1'b1) ? RF_RD_dat : 32'd0;	        
+
+endmodule
+

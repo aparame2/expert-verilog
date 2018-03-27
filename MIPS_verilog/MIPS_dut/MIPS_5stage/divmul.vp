@@ -1,0 +1,44 @@
+//divmul.vp
+
+//; use strict;
+//; use warnings FATAL=>qw(all);
+//; use diagnostics;
+
+//; my $wl = parameter( name=>"wordLength", val=>32, doc=>"Width of input" );
+//; my $iW = parameter( name=>"issueWidth", val=>1, doc=>"Number of fetched instructions" );
+//; my $rP = parameter( name=>"rfReadPorts", val=>2, doc=>"Number of RF read ports" );
+//; my $wP = parameter( name=>"rfWritePorts", val=>1, doc=>"Number of RF write ports" );
+//; my $rC = parameter( name=>"rfEntryCount", val=>32, max=>128, doc=>"Number of RF addresses");
+//; my $rA = parameter( name=>"rfAddressWidth", val=>5, max=>7 , doc=>"Bits for RF address" );
+
+module `mname`
+(
+
+  input logic divmul,
+  input logic [63:0] alu_out,
+  output logic [31:0] lowmul_out,highmul_out
+
+);
+  
+  logic [31:0] low_mul,high_mul;
+  logic  sel;
+  
+  assign sel = divmul;
+  
+  assign highmul_out = high_mul;
+  assign lowmul_out = low_mul;
+  
+always_comb
+    begin
+      if(sel == 1'b1)					//MULT
+        begin
+          	high_mul = alu_out[63:32];
+        	low_mul = alu_out[31:0];
+        end
+      else
+        begin						//latched
+        	low_mul = low_mul;
+        	high_mul = high_mul;
+        end
+    end  
+endmodule

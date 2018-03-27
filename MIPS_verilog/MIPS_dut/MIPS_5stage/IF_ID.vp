@@ -1,0 +1,36 @@
+//IF_ID.vp
+
+module IF_ID
+(
+input logic clk,
+input logic rst,
+input logic flush,
+input logic [31:0] instr_fetch,
+input logic [31:0] pc_fetch,
+output logic [31:0] instr_ID,
+output logic [31:0] pc_ID
+);
+
+
+always @(posedge clk)
+begin
+	if(!rst)
+	begin
+		instr_ID <= 32'd0;
+		pc_ID <= 32'd0;
+	end
+	else if (flush)
+	begin
+		instr_ID <= instr_ID;
+		pc_ID <= pc_ID;
+	end
+	else
+	begin
+		instr_ID <= instr_fetch;
+		pc_ID <= pc_fetch;
+	end
+end
+endmodule
+
+
+

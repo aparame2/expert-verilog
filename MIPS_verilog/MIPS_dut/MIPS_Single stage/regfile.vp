@@ -1,0 +1,37 @@
+//regfile.vp
+//; my $bW = parameter( name=>"bitWidth", val=>32, doc=>"Width of input");
+//; # Any Line that starts with a slash slash semi-colon is perl
+//; # So we can follow our good habits from before
+//; use strict ;                   # Use a strict interpretation
+//; use warnings FATAL=>qw(all);   # Turn warnings into errors
+//; use diagnostics ;              # Print helpful info, for errors
+module `mname`(
+	input clk,
+	input rst,
+	input logic [4:0] rfReadAddr_p0,
+	input logic [4:0] rfReadAddr_p1,
+	input logic rfReadEn_p0,
+	input logic rfReadEn_p1,
+	input logic [4:0] rfWriteAddr_p0,
+	input logic [31:0] rfWriteData_p0,
+	input logic rfWriteEn_p0,
+	output logic [31:0] rfReadData_p0,
+	output logic [31:0] rfReadData_p1);
+
+	logic [31:0] register_file [0:31];
+
+	assign rfReadData_p0 = rfReadEn_p0 ? register_file[rfReadAddr_p0] : 32'b0;
+	assign rfReadData_p1 = rfReadEn_p1 ? register_file[rfReadAddr_p1] : 32'b0;
+		
+	always@(posedge clk)
+	begin
+	   if(rfWriteEn_p0) begin
+    		if(rfWriteAddr_p0 < 31) begin
+		     register_file[0] <= 32'b0;
+		     register_file[rfWriteAddr_p0] <= rfWriteData_p0;
+		end	
+	end
+	end
+
+endmodule:`mname`
+

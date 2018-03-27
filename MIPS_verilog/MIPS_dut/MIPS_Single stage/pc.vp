@@ -1,0 +1,37 @@
+//pc.vp
+
+//; use strict;
+//; use warnings FATAL=>qw(all);
+//; use diagnostics;
+
+//; my $wl = parameter( name=>"wordLength", val=>32, doc=>"Width of input" );
+//; my $iW = parameter( name=>"issueWidth", val=>1, doc=>"Number of fetched instructions" );
+//; my $rP = parameter( name=>"rfReadPorts", val=>2, doc=>"Number of RF read ports" );
+//; my $wP = parameter( name=>"rfWritePorts", val=>1, doc=>"Number of RF write ports" );
+//; my $rC = parameter( name=>"rfEntryCount", val=>32, max=>128, doc=>"Number of RF addresses");
+//; my $rA = parameter( name=>"rfAddressWidth", val=>5, max=>7 , doc=>"Bits for RF address" );
+
+module `mname` 
+(
+  
+  input logic clk,
+  input logic rst,
+  input logic [31:0] input_pc,
+  output logic [31:0] output_pc
+  
+);
+  
+logic [31:0] pc_tmp;
+  
+always_ff@(posedge clk or negedge rst)
+	begin
+     	if(!rst)
+	  pc_tmp <= 32'd0;
+		else
+    	  pc_tmp <= input_pc;
+	end
+
+assign output_pc = pc_tmp;
+
+endmodule
+

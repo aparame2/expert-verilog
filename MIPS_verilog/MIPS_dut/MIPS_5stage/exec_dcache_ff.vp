@@ -1,0 +1,63 @@
+//exec_dcache_ff.vp
+
+module exec_dcache_ff
+
+(
+input logic clk, rst,
+input logic regwrite_exe,sw_exe,lw_exe,
+input logic memread_exe,memtoreg1_exe,memtoreg0_exe,memwrite_exe,
+input logic [31:0] rfReadData_p1_exe,
+input logic [31:0] alu_out_exe,
+input logic [4:0] rs_exe,rt_exe,
+input logic [4:0] temp_dst_exe,
+input [31:0] lowmul_out_exe,highmul_out_exe,
+output logic [31:0] alu_out_dcache,
+output logic [31:0] lowmul_out_dcache,highmul_out_dcache,
+output logic [4:0] rs_dcache,rt_dcache,
+output logic [4:0] temp_dst_dcache,
+output logic [31:0] rfReadData_p1_dcache,
+output logic memtoreg1_dcache,memtoreg0_dcache,memwrite_dcache,memread_dcache,regwrite_dcache,
+output logic lw_dcache, sw_dcache
+);
+
+always @(posedge clk)
+begin
+	if (!rst)
+		begin
+			rs_dcache <= 5'b0;
+			rt_dcache <= 5'b0;
+			alu_out_dcache <= 32'b0;
+			lowmul_out_dcache <= 32'b0;
+			highmul_out_dcache <= 32'b0;
+			temp_dst_dcache <= 5'b0;
+			memtoreg1_dcache <= 1'b0;
+			memtoreg0_dcache <= 1'b0;
+			memwrite_dcache <= 1'b0;
+                        memread_dcache <= 1'b0;
+                        rfReadData_p1_dcache <= 1'b0;
+                        lw_dcache <= 1'b0;
+ 			sw_dcache <= 1'b0;
+                        regwrite_dcache <= 1'b0;
+		end
+
+	else
+		begin
+			alu_out_dcache <= alu_out_exe;
+			lowmul_out_dcache <= lowmul_out_exe;
+			highmul_out_dcache <= highmul_out_exe;
+			rs_dcache <= rs_exe;
+			rt_dcache <= rt_exe;			
+			temp_dst_dcache <= temp_dst_exe;
+			memtoreg1_dcache <= memtoreg1_exe;
+			memtoreg0_dcache <= memtoreg0_exe;
+			memwrite_dcache <= memwrite_exe;
+                        memread_dcache <= memread_exe;
+                        rfReadData_p1_dcache <= rfReadData_p1_exe;
+			lw_dcache <= lw_exe;
+ 			sw_dcache <= sw_exe;
+                        regwrite_dcache <= regwrite_exe;
+		end
+end
+endmodule
+
+

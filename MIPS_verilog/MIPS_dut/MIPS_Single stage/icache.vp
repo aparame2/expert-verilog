@@ -1,0 +1,20 @@
+//icache.vp
+//; # Any Line that starts with a slash slash semi-colon is perl
+//; # So we can follow our good habits from before
+//; use strict ;                   # Use a strict interpretation
+//; use warnings FATAL=>qw(all);   # Turn warnings into errors
+//; use diagnostics ;              # Print helpful info, for errors
+module `mname`(
+	input logic [31:0] iCacheReadAddr,
+	output logic [31:0] iCacheReadData);
+
+	logic [7:0] [3:0]  icache [];
+	int i;
+
+	always@(iCacheReadAddr)
+	begin
+            iCacheReadData = icache[iCacheReadAddr];
+	end
+
+endmodule:`mname`
+

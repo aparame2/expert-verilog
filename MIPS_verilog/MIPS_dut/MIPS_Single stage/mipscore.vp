@@ -1,0 +1,209 @@
+//mipsCore.vp
+
+//; use strict;
+//; use warnings FATAL=>qw(all);
+//; use diagnostics;
+
+//; my $wl = parameter( name=>"wordLength", val=>32, doc=>"Width of input" );
+//; my $iW = parameter( name=>"issueWidth", val=>1, doc=>"Number of fetched instructions" );
+//; my $rP = parameter( name=>"rfReadPorts", val=>2, doc=>"Number of RF read ports" );
+//; my $wP = parameter( name=>"rfWritePorts", val=>1, doc=>"Number of RF write ports" );
+//; my $rC = parameter( name=>"rfEntryCount", val=>32, max=>128, doc=>"Number of RF addresses");
+//; my $rA = parameter( name=>"rfAddressWidth", val=>5, max=>7 , doc=>"Bits for RF address" );
+//; my $btb = parameter( name=>"enableBTB", val=>0, list=>[0,1], doc=>"Enable BTB");
+//; my $btbW = parameter( name=>"entrySizeBTB", val=>34, max=>36, doc=>"BTB entry size");
+//; my $btbC = parameter( name=>"entryCountBTB", val=>0, max=>256, doc=>"BTB entries");
+//; my $mD = parameter( name=>"MipsMode", val=>"Cyc1",list=>["Cyc1","Cyc5","Smpl5","Fwd5","Dual"],doc=>"Iterative design state, testbench will ignore");
+module `mname` 
+(
+
+//ICache Ifc
+input logic [31:0] iCacheReadData,
+output logic [31:0] iCacheReadAddr,
+
+//DCache Ifc
+input logic [31:0] dCacheReadData,
+output logic [31:0] dCacheWriteData,
+output logic [31:0] dCacheAddr,
+output logic dCacheWriteEn,
+output logic dCacheReadEn,
+input logic [31:0] rfReadData_p0,rfReadData_p1,
+output logic [4:0] rfReadAddr_p0,rfReadAddr_p1,
+output logic rfReadEn_p0,rfReadEn_p1,
+output logic [31:0] rfWriteData_p0,
+output logic [4:0] rfWriteAddr_p0,
+output logic rfWriteEn_p0,
+
+// Globals
+input logic clk,
+input logic rst
+
+);
+
+ logic [63:0] alu_out;
+  
+ logic [31:0] pc_in_wire,pc_out_wire,imm_addr,alu_src1;
+ logic [31:0] ld_out,str_out,lowmul_out,highmul_out,wb_out;
+  
+ logic [4:0] alu_control;
+  
+ logic [27:0] j_imm;
+
+ logic divmul,regwrite,regread0,regread1,regdst0,alusrc0;
+ logic memread,memtoreg1,memtoreg0,memwrite;
+ logic beq,bne,bgtz,j,jr,lw,sw,b;
+ logic [4:0] temp;
+ logic [4:0] temp1,temp2;
+ logic [5:0] op_code,fn_code;
+
+assign op_code = iCacheReadData [31:26];
+assign fn_code = iCacheReadData [5:0];
+
+
+//PC module
+//; my $pcm = generate_base("pc","pcm");
+
+`$pcm->instantiate()`  (
+			.clk(clk),
+                        .rst(rst),
+       			.input_pc(pc_in_wire),
+      			.output_pc(pc_out_wire)
+    		  	);
+
+assign imm_addr = {{16{iCacheReadData[15]}},{iCacheReadData[15:0]}};
+assign j_imm = {iCacheReadData[25:0],2'b0};
+ 
+  
+//pc-nxt module  
+//; my $pcnm = generate_base("pcnxt","pcnm");
+
+`$pcnm->instantiate()`  (
+	  .pc(pc_out_wire),
+          .imm_extend(imm_addr),
+          .src0(rfReadData_p0),
+          .addr(j_imm),
+          .B_sel(b),
+          .JR_sel(jr),
+          .J_sel(j),
+          .pc_nxt(pc_in_wire)
+         );
+ 
+  assign iCacheReadAddr=pc_out_wire;
+  
+  assign {temp1,temp2}={iCacheReadData[25:21],iCacheReadData[20:16]};
+  assign {rfReadAddr_p0,rfReadAddr_p1}={temp1,temp2};
+
+  
+//	ID
+//; my $idm = generate_base("decoder","idm");
+
+`$idm->instantiate()`  (
+	    .op_code(op_code),
+	    .fn_code(fn_code),
+            .alu_cntrl(alu_control),
+            .divmul(divmul),
+            .regwrite(regwrite),
+            .regread0(regread0),
+            .regread1(regread1),
+            .regdst0(regdst0),
+            .alusrc0(alusrc0),
+            .memread(memread),
+            .memtoreg1(memtoreg1),
+            .memtoreg0(memtoreg0),
+            .memwrite(memwrite),
+            .beq(beq),
+	    .bne(bne),
+            .bgtz(bgtz),
+            .j(j),
+            .jr(jr),
+            .lw(lw),
+            .sw(sw)
+           );
+
+assign rfWriteEn_p0=regwrite;
+
+assign dCacheWriteEn=memwrite;
+assign dCacheReadEn=memread;
+  
+assign {rfReadEn_p0,rfReadEn_p1}={regread0,regread1};
+  
+
+// branch detetctor //
+//; my $bcm = generate_base("Bdetect","bcm");
+`$bcm->instantiate()` (
+	    .src0(rfReadData_p0),
+            .src1(rfReadData_p1),
+            .BEQ(beq),
+            .BNE(bne),
+            .BGTZ(bgtz),
+            .B_sel(b)
+           );
+
+assign alu_src1 = (alusrc0) ? imm_addr : rfReadData_p1;
+
+
+//Execution Unit //
+//; my $alum = generate_base("exec_unit","alum");
+
+`$alum->instantiate()`  (
+	      .alusrc0(rfReadData_p0),
+              .alusrc1(alu_src1),
+              .shft_amt(iCacheReadData[10:6]),
+              .alu_ctrl(alu_control),
+              .alu_out(alu_out)
+             );
+  
+assign dCacheAddr = alu_out[31:0];
+
+
+//Load_store Module  /
+//; my $loadm = generate_base("ldstr","loadm");
+
+`$loadm->instantiate()` (
+	   .lw(lw),
+           .dch_dat(dCacheReadData),
+           .RF_RD_dat(rfReadData_p1),
+           .ld_out(ld_out),
+           .sw(sw),
+           .str_out(str_out)
+          );
+
+  assign dCacheWriteData = str_out;
+  
+
+//DIVMUL Module  //
+//; my $multlatchm = generate_base("divmul","multlatchm");
+
+`$multlatchm->instantiate()`(
+	   .alu_out(alu_out),
+           .divmul(divmul),
+           .lowmul_out(lowmul_out),
+           .highmul_out(highmul_out)
+          );
+
+  
+//Write Back Stage  //
+//; my $wb_muxm = generate_base("wb","wb_muxm");
+  `$wb_muxm->instantiate()` (
+         .lowmul(lowmul_out),
+         .highmul(highmul_out),
+         .alu_out(alu_out[31:0]),
+         .ld_out(ld_out),
+         .memtoreg0(memtoreg0),
+         .memtoreg1(memtoreg1),
+         .wb_out(wb_out)
+        );
+
+assign rfWriteData_p0 = wb_out;
+assign rfWriteAddr_p0 = temp;
+
+always_comb
+begin
+	case (regdst0)
+		1'b0 : temp = iCacheReadData[20:16]; 
+		1'b1 : temp = iCacheReadData[15:11];
+	endcase
+
+end
+
+endmodule
