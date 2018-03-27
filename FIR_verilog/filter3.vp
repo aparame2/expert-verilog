@@ -1,0 +1,174 @@
+//////////////////////////////////////////////////////////
+//; use strict ; 
+//; use warnings FATAL=>qw(all); 
+//; use diagnostics ; 
+
+//; my $bW = parameter( name=>"bitWidth", val=>8, doc=>"Width of input");
+//; my $tp = parameter( name=>"taps", val=>5, doc=>"Number of taps");
+//; my $dl = parameter( name=>"Delay", val=>2, doc=>"Sequential delay");
+
+module `mname` (
+
+input logic [`$bW-1`:0] uD,
+input logic [`$bW-1`:0] t0,
+input logic [`$bW-1`:0] t1,
+input logic [`$bW-1`:0] t2,
+input logic [`$bW-1`:0] t3,
+input logic [`$bW-1`:0] t4,
+output logic [`$bW-1`:0] fD,
+input logic clk,
+input logic rst
+
+);
+
+logic [`(2*$bW)-1`:0] fd_reg, fd_nxt, a_reg, a_nxt, b_reg, b_nxt, c_reg, c_nxt, d_reg, d_nxt;
+
+logic [`(2*$bW)-1`:0] k1, k1_nxt, k2, k2_nxt, l1, l2, l1_nxt, l2_nxt, m1, m2, m1_nxt, m2_nxt, n1, n2, n1_nxt, n2_nxt, p1, p2, p1_nxt, p2_nxt;
+  
+logic [`($bW/2)-1`:0] ud_reg_u, ud_reg_l, t0_reg_u, t0_reg_l, t1_reg_u, t1_reg_l, t2_reg_u, t2_reg_l, t3_reg_u, t3_reg_l, t4_reg_u, t4_reg_l;
+
+logic [7:0] m00,m01,m02,m03,m00_nxt,m01_nxt,m02_nxt,m03_nxt;
+logic [7:0] m10,m11,m12,m13,m10_nxt,m11_nxt,m12_nxt,m13_nxt;
+logic [7:0] m20,m21,m22,m23,m20_nxt,m21_nxt,m22_nxt,m23_nxt;
+logic [7:0] m30,m31,m32,m33,m30_nxt,m31_nxt,m32_nxt,m33_nxt;
+logic [7:0] m40,m41,m42,m43,m40_nxt,m41_nxt,m42_nxt,m43_nxt;
+
+logic[15:0]out_nxt,out_reg;
+logic [7:0]t0_reg,t1_reg,t2_reg,t3_reg,t4_reg,ud_reg;
+
+logic [`(2*$bW)-1`:0] val_out;
+logic [`$bW-1`:0] q0,q1,q2,q3,q4;
+logic [`(2*$bW)-1`:0] val0,val1,val2,val3,val4;
+
+ 
+  assign ud_reg_u=ud_reg[7:4];
+  assign ud_reg_l=ud_reg[3:0];
+  
+  assign t0_reg_u=t0_reg[7:4];
+  assign t0_reg_l=t0_reg[3:0];
+  
+  assign t1_reg_u=t1_reg[7:4];
+  assign t1_reg_l=t1_reg[3:0];
+  
+  assign t2_reg_u=t2_reg[7:4];
+  assign t2_reg_l=t2_reg[3:0];
+  
+  assign t3_reg_u=t3_reg[7:4];
+  assign t3_reg_l=t3_reg[3:0];
+  
+  assign t4_reg_u=t4_reg[7:4];
+  assign t4_reg_l=t4_reg[3:0];	
+  
+  assign fD=out_reg;
+
+ always_ff @ (posedge clk or negedge rst)
+	begin
+	if(~rst)
+		begin
+			fd_reg<=16'd0;
+			ud_reg<=8'd0;
+			
+			a_reg<=16'd0;
+			b_reg<=16'd0;
+			c_reg<=16'd0;
+			d_reg<=16'd0;
+			
+			t0_reg<=8'd0;
+			t1_reg<=8'd0;
+			t2_reg<=8'd0;
+			t3_reg<=8'd0;
+			t4_reg<=8'd0;
+			
+			out_reg<=0;
+			
+			k1<=0;k2<=0;l1<=0;l2<=0;m1<=0;m2<=0;n1<=0;n2<=0;p1<=0;p2<=0;
+			
+			
+m00<=8'd0;m01<=8'd0;m02<=8'd0;m03<=8'd0;
+m10<=8'd0;m11<=8'd0;m12<=8'd0;m13<=8'd0;
+m20<=8'd0;m21<=8'd0;m22<=8'd0;m23<=8'd0;
+m30<=8'd0;m31<=8'd0;m32<=8'd0;m33<=8'd0;
+m40<=8'd0;m41<=8'd0;m42<=8'd0;m43<=8'd0;
+			
+		end
+		else
+		begin
+			fd_reg<=fd_nxt;
+			
+			
+			a_reg<=a_nxt;
+			b_reg<=b_nxt;
+			c_reg<=c_nxt;
+			d_reg<=d_nxt;
+			
+			t0_reg<=t0;
+			t1_reg<=t1;
+			t2_reg<=t2;
+			t3_reg<=t3;
+			t4_reg<=t4;
+			
+			ud_reg<=uD;
+			out_reg<=out_nxt;
+			
+			m01<=m01_nxt;m02<=m02_nxt;m03<=m03_nxt;m00<=m00_nxt;
+			m11<=m11_nxt;m12<=m12_nxt;m13<=m13_nxt;m10<=m10_nxt;
+			m21<=m21_nxt;m22<=m22_nxt;m23<=m23_nxt;m20<=m20_nxt;
+			m31<=m31_nxt;m32<=m32_nxt;m33<=m33_nxt;m30<=m30_nxt;
+			m41<=m41_nxt;m42<=m42_nxt;m43<=m43_nxt;m40<=m40_nxt;
+			
+			
+			k1<=k1_nxt;k2<=k2_nxt;l1<=l1_nxt;l2<=l2_nxt;m1<=m1_nxt;m2<=m2_nxt;n1<=n1_nxt;n2<=n2_nxt;p1<=p1_nxt;p2<=p2_nxt;
+		end
+	end
+
+always_comb
+	begin
+
+	m00_nxt=t0_reg_u*ud_reg_u;
+        m01_nxt=t0_reg_l*ud_reg_u;
+        m02_nxt=t0_reg_u*ud_reg_l;
+        m03_nxt=t0_reg_l*ud_reg_l;
+        
+        m10_nxt=t1_reg_u*ud_reg_u;
+        m11_nxt=t1_reg_l*ud_reg_u;
+        m12_nxt=t1_reg_u*ud_reg_l;
+        m13_nxt=t1_reg_l*ud_reg_l;
+        
+        m20_nxt=t2_reg_u*ud_reg_u;
+        m21_nxt=t2_reg_l*ud_reg_u;
+        m22_nxt=t2_reg_u*ud_reg_l;
+        m23_nxt=t2_reg_l*ud_reg_l;
+        
+        m30_nxt=t3_reg_u*ud_reg_u;
+        m31_nxt=t3_reg_l*ud_reg_u;
+        m32_nxt=t3_reg_u*ud_reg_l;
+        m33_nxt=t3_reg_l*ud_reg_l;
+        
+        m40_nxt=t4_reg_u*ud_reg_u;
+        m41_nxt=t4_reg_l*ud_reg_u;
+        m42_nxt=t4_reg_u*ud_reg_l;
+        m43_nxt=t4_reg_l*ud_reg_l;
+
+           k1_nxt={m00,8'd0}+{4'd0,m01,4'd0};
+	   k2_nxt={4'd0,m02,4'd0}+{8'd0,m03};
+	   fd_nxt=k1+k2+a_reg;
+      
+	   l1_nxt={m10,8'd0}+{4'd0,m11,4'd0};
+	   l2_nxt={4'd0,m12,4'd0}+{8'd0,m13};
+	   a_nxt=l1+l2+b_reg;
+	   
+	   m1_nxt={m20,8'd0}+{4'd0,m21,4'd0};
+	   m2_nxt={4'd0,m22,4'd0}+{8'd0,m23};
+	   b_nxt=m1+m2+c_reg;
+      
+	   n1_nxt={m30,8'd0}+{4'd0,m31,4'd0};
+	   n2_nxt={4'd0,m32,4'd0}+{8'd0,m33};
+	   c_nxt=n1+n2+d_reg;
+	   
+	   p1_nxt={m40,8'd0}+{4'd0,m41,4'd0};
+	   p2_nxt={4'd0,m42,4'd0}+{8'd0,m43};
+	   d_nxt=p1+p2;
+		
+		out_nxt=fd_reg>>8;
+	end	
+endmodule: `mname`

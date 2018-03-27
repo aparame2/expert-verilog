@@ -1,0 +1,46 @@
+
+
+//; my $region = parameter( Name=>'Region', Val=>$self->get_parent()->mname() , Doc=>"Module Name for extraction");
+
+
+//generic_bench
+module `mname` (
+    input logic triggerStart,
+    input logic triggerStop,
+    output int seed,
+    output logic clk,
+    output logic rst,
+    output int clk_period 
+    );
+   
+      
+    initial begin
+        int dummy;
+        // if this is a "+wave" run, it must record all signals
+        if ( $test$plusargs("wave") ) begin
+            $display("%t: Starting Wave Capture",$time);
+            //         levels  instance
+            $vcdpluson(0,       `$region` );
+            $vcdplusmemon(0,    `$region` );
+        end
+
+        // find the seed for this run
+        if ( $test$plusargs("seed") ) begin
+          $value$plusargs("seed=%d", seed);
+        end else begin
+            seed = 12345;
+        end
+        $display("%t:\tUsing seed %d",$time, seed);
+        dummy = $random(seed);
+    end // initial begin
+
+//;  my $clock = generate( 'clocker' , 'THE_GREAT_AND_WONDERFUL_CLOCK' );
+//;  my $saif  = generate( 'saif_extract' , 'THE_VOYEUR' , Region=>$region );
+//;  my $rst = generate('reset', 'MIND_WIPE');
+//;  my $lim = generate( 'limiter', 'GREAT_WALL_OF_TIME');
+   `$clock->instantiate()` ( .clk(clk) , .clk_period( clk_period ) );
+   `$saif->instantiate()` ( .triggerStart( triggerStart ) , .triggerStop( triggerStop ) );
+   `$rst->instantiate()`( .clk_period( clk_period ), .rst(rst), .stall() );
+   `$lim->instantiate()`( .clk(clk) , .rst(rst));
+
+endmodule

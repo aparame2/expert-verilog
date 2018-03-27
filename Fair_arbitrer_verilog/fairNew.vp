@@ -1,0 +1,71 @@
+//fairArb.vp
+
+//; use strict;
+//; use warnings FATAL=>qw(all);
+//; use diagnostics;
+
+//; print STDOUT "This is a print at rtl generation time \n";
+
+//; my $bW = parameter( name=>"bitWidth", val=>`$bW`, doc=>"Width of input");
+
+module `mname`
+(
+input logic [`$bW-1`:0] bids,
+input logic rst,
+input logic clk,
+output logic [`$bW-1`:0] win
+);
+
+logic [`$bW-1`:0] track, preg, q;
+logic [`($bW/4)-1`:0] i;
+
+always@(posedge clk, negedge rst)
+begin
+
+  if (!rst)
+   begin
+     preg = `$bW`'b0;
+     track = `$bW`'b0;
+     i = `$bW`'b0;
+     q = `$bW`'b0;
+   end
+
+  else if(bids != `$bW`'b0)
+   begin
+
+     wins = `$bW`'b0;
+
+     preg = ( q != wins || preg == `$bW`'b0 ) ? wins : preg;
+     track = (track == `$bW`'b1111111111111111) ? `$bW`'b0 : track;
+	
+     casex(preg)
+       `$bW`'b1xxxxxxxxxxxxxxx : begin track[15] = 1'b1; i=`$bW/4`'d15; end
+       `$bW`'b01xxxxxxxxxxxxxx : begin track[14] = 1'b1; i=`$bW/4`'d14; end
+       `$bW`'b001xxxxxxxxxxxxx : begin track[13] = 1'b1; i=`$bW/4`'d13; end
+       `$bW`'b0001xxxxxxxxxxxx : begin track[12] = 1'b1; i=`$bW/4`'d12; end
+       `$bW`'b00001xxxxxxxxxxx : begin track[11] = 1'b1; i=`$bW/4`'d11; end
+       `$bW`'b000001xxxxxxxxxx : begin track[10] = 1'b1; i=`$bW/4`'d10; end
+       `$bW`'b0000001xxxxxxxxx : begin track[9] = 1'b1; i=`$bW/4`'d9; end
+       `$bW`'b00000001xxxxxxxx : begin track[8] = 1'b1; i=`$bW/4`'d8; end
+       `$bW`'b000000001xxxxxxx : begin track[7] = 1'b1; i=`$bW/4`'d7; end
+       `$bW`'b0000000001xxxxxx : begin track[6] = 1'b1; i=`$bW/4`'d6; end
+       `$bW`'b00000000001xxxxx : begin track[5] = 1'b1; i=`$bW/4`'d5; end
+       `$bW`'b000000000001xxxx : begin track[4] = 1'b1; i=`$bW/4`'d4; end
+       `$bW`'b0000000000001xxx : begin track[3] = 1'b1; i=`$bW/4`'d3; end
+       `$bW`'b00000000000001xx : begin track[2] = 1'b1; i=`$bW/4`'d2; end
+       `$bW`'b000000000000001x : begin track[1] = 1'b1; i=`$bW/4`'d1; end
+       `$bW`'b0000000000000001 : begin track[0] = 1'b1; i=`$bW/4`'d0; end	
+       default : wins = `$bW`'b0;
+     endcase
+     
+     preg[i] = 1'b0;
+     win[i] = 1'b1;
+     q <= bids;
+
+  end
+
+  else
+     winss = `$bW`'b0;
+
+end
+endmodule: `mname`

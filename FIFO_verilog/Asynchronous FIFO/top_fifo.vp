@@ -1,0 +1,47 @@
+//top_fifo.vp
+//
+//; use strict;
+//; use warnings FATAL => qw(all);
+//; use diagnostics;
+
+module `mname`();
+
+//; my $hw = generate_base('fifo', 'my_fifo');
+//; my $bW = $hw -> get_param("bitWidth");
+logic push, pop, rst, clk, full, empty;
+logic [`$bW-1`:0] push_data, pop_data;
+
+`$hw->instantiate`( .push_data(push_data), .push(push), .pop_data(pop_data), .pop(pop), .clk(clk), .rst(rst), .empty(empty),
+.full(full) ); 
+
+initial 
+begin
+push_data = 16'd0;
+//push = 1'b1;
+//pop = 1'b0;
+clk = 1'b0;
+forever #2 clk = ~clk;
+#100 $finish ;  
+end
+
+initial
+begin
+push = 1'b1;
+pop = 1'b0;
+#40 pop = 1'b1;
+end
+
+initial
+begin
+rst = 1'b0;
+#8 rst = 1'b1; 
+end 
+
+always @ (negedge clk)
+begin
+push_data = push_data + 1;
+end
+
+
+endmodule : `mname`
+

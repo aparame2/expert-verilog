@@ -1,0 +1,76 @@
+/////////////////////////////////////////////////////////////
+// top_seqMult.vp
+//
+//; use strict;
+//; use warnings FATAL => qw(all);
+//; use diagnostics;
+
+module `mname`();
+
+//; my $hw = generate_base('seqDiv', 'my_seqDiv');
+//; my $bW = $hw -> get_param("bitWidth");
+
+logic [`$bW-1`:0] num, den;
+logic [`$bW-1`:0] quo, rem;
+logic  [`$bW-1`:0] exp_quo, exp_rem;
+logic clk, rst, nd_valid, nd_ready, qr_valid;
+
+
+`$hw->instantiate` (.num(num),.den(den),.quo(quo),.rem(rem),.clk(clk),.nd_valid(nd_valid),.qr_valid(qr_valid),.nd_ready(nd_ready),.rst(rst));
+
+//; my $region = "my_seqDiv";
+
+initial begin
+// if this is a "+wave" run, it must record all signals
+	if ( $test$plusargs("wave") ) begin
+		$display("%t: Starting Wave Capture",$time);
+		// levels, instance
+		$vcdpluson(0, `$region` );
+		$vcdplusmemon(0, `$region` );
+		end
+end
+
+initial begin
+        $set_toggle_region(`$region`);
+$toggle_start();
+#1
+$toggle_stop();
+        $toggle_report( "top.saif" , 1.0e-12 , `$region` );
+end
+
+initial
+begin
+clk=0;
+rst = 1;
+#2 rst = 0;
+#2 rst = 1;
+for (int i=0; i<100; i++)
+	begin
+		#1		
+		//num=$random();
+		#2
+		//den=$random();
+		#2
+		nd_valid = 1;
+		exp_quo = num/den;
+		exp_rem = num%den;
+		num=16'b0000000000000111;
+		den=16'b0000000000000000;
+                #10
+		nd_valid = 1;
+		exp_quo = num/den;
+		exp_rem = num%den;
+		num=16'b0000000000000111;
+		den=16'b0000000000000111;
+	end
+end
+
+always
+	#1 clk = ~clk;
+
+initial
+ $monitor ( " exp-quo = `$bW`'d%0d, exp_rem = `$bW`'d%0d , quo = `$bW`'d%0d , rem = `$bW`'d%0d", exp_quo , exp_rem , quo , rem);
+initial 
+     #150 $finish();
+
+endmodule: `mname`

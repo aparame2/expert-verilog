@@ -1,0 +1,50 @@
+//
+
+
+
+//;
+//; my $region = parameter( Name=>'Region', Val=>[] , Doc=>"Module Name for extraction");
+//;
+
+//saif_extract
+module `mname` (
+		input logic triggerStart ,
+		input logic triggerStop
+		);
+
+   logic 		    foo ;
+   
+   
+   initial begin
+      foo = 1'b0;
+      #1
+      //$set_gate_level_monitoring("rtl_on");
+      //$set_gate_level_monitoring("mda");
+      $set_gate_level_monitoring("rtl_on","sv");
+      $set_gate_level_monitoring("rtl_on","mda");
+      #1
+      $set_toggle_region(`$region`);
+      #1
+      @( posedge triggerStart );
+      $display( "Starting Toggle Collection" );
+      $toggle_start();
+      #100000000000000000000
+      foo = 1'b1;
+   end
+ 
+   initial begin
+      #1 
+      @( posedge triggerStart );
+      #1
+      @( posedge triggerStop );
+      $display( "Stopping Toggle Collection" );
+      #1
+      $toggle_stop();
+      #1
+      $toggle_report( "top.saif" , 1.0e-12 , `$region` );
+
+   end
+
+
+     
+endmodule

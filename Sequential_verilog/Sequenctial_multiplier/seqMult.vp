@@ -1,0 +1,73 @@
+//////////////////////////////////////////////////////////
+// seqMult.vp
+//;
+//; # Any Line that starts with a slash slash semi-colon is perl
+//; # So we can follow our good habits from before
+//; use strict ; # Use a strict interpretation
+//; use warnings FATAL=>qw(all); # Turn warnings into errors
+//; use diagnostics ; # Print helpful info, for errors
+//;
+//; print STDOUT "This is a print at rtl generation time\n";
+//;
+//; # Genesis2 Allows us to create parameters
+//; my $bW = parameter( name=>"bitWidth", val=>16, doc=>"Width of input");
+//;
+//; # Any expression contained in back-ticks is evaluated to a string
+//; # and printed in-line ... for example :
+// The bitwidth of this module is `$bW`
+// We use the gen2 builtin mname to indicate the module name
+// This is because module names are derived from the generator
+// file name, where uniquely generated files are given a unique name.
+module `mname` (
+	input logic [`$bW-1`:0] a,
+	input logic [`$bW-1`:0] b,
+	output logic [`2*$bW`:0] z,
+	input logic clk,
+	input logic rst,
+	input logic ab_valid,
+	output logic ab_ready,
+	output logic z_valid
+	);
+  
+  logic [`$bW/4`:0]i;
+  logic [`$bW`:0]d;
+  logic [`$bW-1`:0]a_tmp; 
+  logic buff;	  
+  assign  buff = ~(1'b0);
+always @(posedge clk,negedge rst)
+ begin
+   if (!rst)
+     begin 	     
+     z[`2*$bW`] = ~buff; 	
+     z = `(2*$bW)`'b0;		     
+     ab_ready = 1;
+     z_valid =0;  
+     end
+   else if( ab_valid == 1 && ab_ready == 1 )
+       	  begin
+       		z = {{`$bW+1`{0}},b};
+       		d= `$bW+1`'b0;
+		a_tmp = a;	
+            	ab_ready = 0;
+		z_valid = 0;
+            	i = `($bW/4)+1`'b0; 
+          end
+   else if (ab_ready == 0)
+            begin
+              if ( i <= `($bW/4)+1`'d`$bW-1`)
+                 begin
+	           // `(2*$bW)-1`:`($bW)` - [31:16] and [0]
+                   d = z[`(2*$bW)`:`$bW`] + {0,(a_tmp & {`$bW`{z[0]}})};
+                   z = {d,z[`$bW-1`:0]};
+                   z = z >> 1;
+                   i=i+1;
+                 end    
+              else if (i == `($bW/4)+1`'d`$bW`)
+	      begin
+                ab_ready = 1;
+                z_valid = 1;
+              end
+            end
+  end
+  
+  endmodule: `mname`

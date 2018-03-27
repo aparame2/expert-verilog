@@ -1,0 +1,85 @@
+//top_seqMult.vp
+
+
+module `mname` ();
+
+//; my $dut = generate_base("seqMult", "my_seqMult");
+//; my $bW = $dut->get_param("bitWidth");
+
+//; my $gb = generate("generic_bench", "BASIC_BENCH");
+
+//; my $pc = generate("cycle_counter", "PERF_COUNT", CycleName=>"multRate_cyc");
+//; my $ec = generate("cycle_counter", "ERROR_COUNT", CountName=>"mult_err_cnt");
+
+    logic [`$bW-1`:0] a, last_a;
+    logic [`$bW-1`:0] b, last_b;
+    logic             ab_valid;
+    logic             ab_ready;
+
+    logic             clk;
+    logic             rst;
+
+    logic [`2*$bW`:0] z;
+    logic             z_valid;
+    logic 			  perf ; 
+
+    logic             z_err ;
+
+    logic             triggerStart;
+    logic             triggerStop;
+    int               seed;
+    int               clk_period ;
+
+    // Instantiate the design under test and basic bench
+    `$dut->instantiate()` (.*);
+    `$gb->instantiate()`  (.*);
+    `$pc->instantiate()`  (.triggerStart(perf), .triggerStop(triggerStop), .increment(z_valid), .clk(clk), .rst(rst) );
+    `$ec->instantiate()`  (.triggerStart(triggerStart), .triggerStop(triggerStop), .increment(z_err), .clk(clk), .rst(rst) );
+   // TODO event counter
+
+    // Simulation Narrative
+    initial begin
+    	triggerStart  = 1'b0 ;
+    	triggerStop = 1'b0 ;
+    	perf = 1'b0 ; 
+    	//@(negedge rst);
+    	repeat(100) @(posedge clk );
+    	triggerStart  = 1'b1 ;
+    	repeat(100000) @(posedge z_valid );  //Wait 100k z_valids
+    	perf = 1'b1 ;
+    	repeat(100000) @(posedge z_valid );  //Wait 100k z_valids
+    	triggerStop = 1'b1 ;
+    	repeat(10) @(posedge clk );
+    	$finish();
+    end
+
+    // Frontend Driver
+    always @( negedge clk ) begin
+    	// Test bench driven signal start at negedg
+    	//   so it is obv they came from the bench 
+    	a = $random() ;
+    	b = $random() ; 
+    	ab_valid = perf ? 1'b1 : $random() ; // TODO in event count mode it is always valid
+
+    	if( ab_valid && ab_ready ) begin
+    		last_a = a ;
+    		last_b = b ;
+    	end 
+    end
+
+    // Verification
+    always @( posedge clk ) begin
+    	#1
+    	// Wait one tick to see what was flopped
+        z_err = 1'b0 ;
+    	if( z_valid && triggerStart ) begin
+    		//assert( z == (last_a * last_b) ) else 
+    		//	$display("%t: Error - %d != %d * %d", $time(), z, last_a, last_b);
+            z_err = ( z != (last_a * last_b) ) ;
+    	end
+
+    end
+
+
+
+endmodule 
